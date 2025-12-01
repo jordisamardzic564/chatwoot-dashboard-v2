@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Korbach Odoo CRM Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root {
+      --bg: #060607;
+      --bg-elevated: #101114;
+      --bg-soft: #15161a;
+      --border-subtle: rgba(255,255,255,0.06);
+      --text-primary: #ffffff;
+      --text-secondary: #a0a3ad;
+      --accent: #d8ff3c;
+      --accent-soft: rgba(216,255,60,0.12);
+      --danger: #ff4b5c;
+      --success: #20e3b2;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 14px 16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #15161a 0, #060607 55%);
+      color: var(--text-primary);
+    }
+
+    #status {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .shell {
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.06), transparent);
+      padding: 1px;
+    }
+
+    .surface {
+      background: linear-gradient(135deg, #0c0d10, #050506);
+      border-radius: 13px;
+      padding: 18px;
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow:
+        0 18px 45px rgba(0,0,0,0.75),
+        0 0 0 1px rgba(0,0,0,0.7) inset;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      gap: 8px;
+    }
+
+    .lead-title {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .badge-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .id-pill {
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .header-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid transparent;
+      background: var(--accent);
+      color: #050505;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .btn svg {
+      width: 15px;
+      height: 15px;
+      stroke-width: 2;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1.1fr;
+      gap: 14px;
+      margin-top: 6px;
+    }
+
+    .panel {
+      background: radial-gradient(circle at top left, #181920, #0c0d11);
+      border-radius: 10px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.04);
+      position: relative;
+    }
+
+    .panel-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .panel-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-secondary);
+    }
+
+    .panel-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(216,255,60,0.8);
+      box-shadow: 0 0 8px rgba(216,255,60,0.7);
+    }
+
+    .data-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      row-gap: 4px;
+      column-gap: 8px;
+      font-size: 13px;
+    }
+
+    .label { color: var(--text-secondary); font-size: 12px; }
+    .value { text-align: right; font-size: 13px; }
+    .value-strong { font-weight: 500; }
+    .value-mono { font-family: ui-monospace, monospace; }
+
+    .prob-bar {
+      margin-top: 6px;
+      height: 5px;
+      border-radius: 999px;
+      background: #1b1c21;
+      overflow: hidden;
+    }
+
+    .prob-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(216,255,60,0.1), var(--accent));
+      box-shadow: 0 0 18px rgba(216,255,60,0.7);
+    }
+
+    .stage-pill-big {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(216,255,60,0.12);
+      border: 1px solid rgba(216,255,60,0.35);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .stage-dot-big {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px rgba(216,255,60,0.8);
+    }
+
+    .note-textarea {
+      width: 100%;
+      margin-top: 6px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      background: #0b0c10;
+      color: var(--text-primary);
+      font-size: 12px;
+      resize: vertical;
+      min-height: 44px;
+    }
+
+    .muted-banner {
+      background: #0b0c10;
+      border-radius: 10px;
+      padding: 10px 12px;
+      border: 1px dashed rgba(255,255,255,0.16);
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="status">Odoo data laden...</div>
+
+<div class="shell">
+  <div class="surface">
+    <div id="content"></div>
+  </div>
+</div>
+
+<script>
+// --- CONFIGURATIE ---
+const N8N_LEAD_URL  = "https://n8n.srv865019.hstgr.cloud/webhook/chatwoot-odoo-lookup";
+const N8N_QUOTE_URL = "https://n8n.srv865019.hstgr.cloud/webhook/chatwoot-odoo-create-quote";
+const N8N_NOTE_URL  = "https://n8n.srv865019.hstgr.cloud/webhook/chatwoot-odoo-add-note";
+const N8N_AI_URL    = "https://n8n.srv865019.hstgr.cloud/webhook/chatwoot-ai-analyze";
+
+// --- GLOBALE STATE ---
+let currentLead = null;
+let currentConversationId = null;
+let currentAccountId = null; // <--- NIEUW
+
+function setStatus(msg) {
+  document.getElementById("status").textContent = msg || "";
+}
+
+function renderLead(lead) {
+  const content = document.getElementById("content");
+  content.innerHTML = "";
+  currentLead = lead || null;
+
+  if (!lead) {
+    content.innerHTML = `
+      <div class="muted-banner">
+        <strong>Geen lead gevonden.</strong><br>
+        Deze Chatwoot contact heeft nog geen matchende lead in Odoo.
+      </div>`;
+    return;
+  }
+
+  const stageName = Array.isArray(lead.stage_id) ? lead.stage_id[1] : "Onbekend";
+  const prob = typeof lead.probability === "number" ? lead.probability : 0;
+  const formattedProb = prob.toFixed(1).replace(".", ",");
+
+  const odooUrl =
+    "https://korbach-forged.odoo.com/web#id=" +
+    lead.id +
+    "&model=crm.lead&view_type=form";
+
+  content.innerHTML = `
+    <div class="header">
+      <div>
+        <div class="lead-title">${lead.name || "Lead zonder titel"}</div>
+        <div class="subtitle">${lead.x_studio_source || "-"}</div>
+
+        <div class="badge-row">
+          <div class="stage-pill-big">
+            <span class="stage-dot-big"></span>
+            <span>${stageName}</span>
+          </div>
+
+          <div class="id-pill">Lead ID: <span class="value-mono">${lead.id}</span></div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <a class="btn" href="${odooUrl}" target="_blank">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor">
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+            <path d="M18 13v6a2 2 0 0 1-2 2H6a2
+            2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          </svg>
+          Open in Odoo
+        </a>
+      </div>
+    </div>
+
+    <div class="grid">
+
+      <div class="panel">
+        <div class="panel-title-row">
+          <div class="panel-title">Lead details</div>
+          <div class="panel-dot"></div>
+        </div>
+
+        <div class="data-grid">
+          <div class="label">Naam</div>       <div class="value">${lead.x_studio_naam || "-"}</div>
+          <div class="label">Telefoon</div>   <div class="value value-mono">${lead.phone || "-"}</div>
+          <div class="label">Email</div>      <div class="value value-mono">${lead.email_from || "-"}</div>
+          <div class="label">Bron</div>       <div class="value">${lead.x_studio_source || "-"}</div>
+          <div class="label">Aangemaakt</div> <div class="value">${lead.create_date || "-"}</div>
+          <div class="label">Probability</div><div class="value">${formattedProb}%</div>
+          <div class="label">Voertuig</div>   <div class="value">${lead.x_studio_voertuig_lead || "-"}</div>
+          <div class="label">Velgmodel</div>  <div class="value">${lead.x_studio_velgmodel_lead || "-"}</div>
+          <div class="label">Inchmaat</div>   <div class="value">${lead.x_studio_inchmaat_lead || "-"}</div>
+          <div class="label">Kleur</div>      <div class="value">${lead.x_studio_kleur_lead || "-"}</div>
+        </div>
+
+        <div class="prob-bar">
+          <div class="prob-fill" style="width:${Math.min(prob, 100)}%"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title-row">
+          <div class="panel-title">Acties</div>
+          <div class="panel-dot"></div>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn btn-ghost" id="btn-ai-analyze" style="color: var(--accent); border-color: var(--accent-soft);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            Auto-fill Lead
+          </button>
+          
+          <button class="btn btn-ghost" id="btn-create-quote">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor">
+              <path d="M9 12h6"/>
+              <path d="M12 9v6"/>
+              <path d="M4 5a2 2 0 0 1
+                2-2h12a2 2 0 0 1 2 2v14a2
+                2 0 0 1-2 2H6a2 2 0 0
+                1-2-2z"/>
+            </svg>
+            Create quote
+          </button>
+
+          <button class="btn btn-ghost" id="btn-add-note">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor">
+              <path d="M17 3a2.828 2.828 0 0
+              1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+            </svg>
+            Note
+          </button>
+        </div>
+
+        <textarea id="note-input" class="note-textarea"
+          placeholder="Interne notitie voor deze lead..."></textarea>
+      </div>
+
+    </div>
+  `;
+  
+  attachActionHandlers();
+}
+
+function attachActionHandlers() {
+  // AI Handler
+  const btnAi = document.getElementById("btn-ai-analyze");
+  if (btnAi) {
+      btnAi.onclick = () => runAiAnalysis();
+  }
+
+  // Bestaande handlers
+  const btnQuote = document.getElementById("btn-create-quote");
+  if (btnQuote) btnQuote.onclick = () => createQuote();
+
+  const btnNote = document.getElementById("btn-add-note");
+  if (btnNote) {
+      btnNote.onclick = () => {
+        const note = document.getElementById("note-input").value.trim();
+        if (!note) return setStatus("Note is leeg.");
+        addNote(note);
+      };
+  }
+}
+
+// --- AI LOGICA AANGEPAST VOOR ACCOUNT ID ---
+async function runAiAnalysis() {
+  if (!currentLead) return setStatus("Geen lead om te vullen.");
+  if (!currentConversationId) return setStatus("Geen actief gesprek.");
+  // Optioneel: check op account ID, al werkt het soms ook zonder als de n8n node hardcoded is.
+  // if (!currentAccountId) return setStatus("Geen Account ID gevonden.");
+
+  const btn = document.getElementById("btn-ai-analyze");
+  const originalText = btn.innerHTML;
+  btn.innerHTML = "Analyseren..."; 
+  setStatus("AI leest chat & update Odoo...");
+
+  try {
+    const res = await fetch(N8N_AI_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+          lead_id: currentLead.id,
+          contact_id: currentLead.x_studio_chatwoot_contact_id_1,
+          conversation_id: currentConversationId,
+          account_id: currentAccountId // <--- WORDT NU MEEGESTUURD NAAR N8N
+      })
+    });
+
+    if (!res.ok) throw new Error("Fout bij AI request");
+
+    const data = await res.json();
+    
+    if(data.updates) {
+        currentLead = { ...currentLead, ...data.updates };
+        renderLead(currentLead); 
+        setStatus("Lead succesvol bijgewerkt door AI!");
+    } else {
+        setStatus("Klaar. Verversen...");
+        loadOdoo(currentLead.x_studio_chatwoot_contact_id_1);
+    }
+
+  } catch (e) {
+    console.error(e);
+    setStatus("AI update mislukt.");
+  } finally {
+    if(document.getElementById("btn-ai-analyze")) {
+        document.getElementById("btn-ai-analyze").innerHTML = originalText;
+    }
+  }
+}
+
+async function createQuote() {
+  if (!currentLead) return;
+  setStatus("Quote aanmaken...");
+
+  const res = await fetch(N8N_QUOTE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lead_id: currentLead.id })
+  }).catch(() => null);
+
+  if (!res || !res.ok) return setStatus("Error bij quote.");
+  setStatus("Quote aangemaakt.");
+}
+
+async function addNote(note) {
+  if (!currentLead) return;
+
+  setStatus("Notitie verzenden...");
+  const res = await fetch(N8N_NOTE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lead_id: currentLead.id, note })
+  }).catch(() => null);
+
+  if (!res || !res.ok) return setStatus("Error: note.");
+  setStatus("Notitie toegevoegd.");
+}
+
+async function loadOdoo(contactId) {
+  setStatus("Odoo data laden...");
+  const url = N8N_LEAD_URL + "?contact_id=" + encodeURIComponent(contactId);
+
+  const res = await fetch(url).catch(() => null);
+  if (!res) return setStatus("Fout bij ophalen.");
+
+  const data = await res.json().catch(() => ({}));
+  renderLead(data.lead || null);
+  setStatus("");
+}
+
+// --- BERICHTEN ONTVANGEN VAN CHATWOOT ---
+window.addEventListener("message", (event) => {
+  if (typeof event.data !== "string") return;
+  try {
+    const parsed = JSON.parse(event.data);
+    if (parsed.event !== "appContext") return;
+
+    // 1. Conversation ID
+    if (parsed.data && parsed.data.conversation) {
+        currentConversationId = parsed.data.conversation.id;
+    }
+
+    // 2. Account ID (NIEUW)
+    if (parsed.data && parsed.data.account) {
+        currentAccountId = parsed.data.account.id;
+    }
+
+    const contactId = parsed?.data?.contact?.id;
+    if (!contactId) {
+      setStatus("Geen Chatwoot contact ID.");
+      return renderLead(null);
+    }
+
+    loadOdoo(contactId);
+  } catch {
+    setStatus("Context parse error.");
+  }
+});
+
+// Initieer data-ophalen
+window.parent.postMessage("chatwoot-dashboard-app:fetch-info", "*");
+</script>
+
+</body>
+</html>
