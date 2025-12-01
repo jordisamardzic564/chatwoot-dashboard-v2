@@ -78,7 +78,7 @@ export default function Dashboard() {
 
         const data: ChatwootData = {
           conversationId: parsed.data?.conversation?.id || null,
-          accountId: parsed.data?.account?.id || null,
+          accountId: parsed.data?.account?.id || 142114, // Fallback to default if missing
           contactId: parsed.data?.contact?.id || null,
           contactName: parsed.data?.contact?.name,
           contactPhone: parsed.data?.contact?.phone_number,
