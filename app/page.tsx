@@ -314,7 +314,10 @@ function DetailsPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string
                 />
 
                 <div className="label">Bron</div>
-                <div className="value">{lead.x_studio_source || "-"}</div>
+                <EditableField 
+                    value={lead.x_studio_source || ""} 
+                    onChange={(v) => onUpdate('x_studio_source', v)} 
+                />
                 
                 <div className="label">Aangemaakt</div>
                 <div className="value">{lead.create_date?.split(' ')[0] || "-"}</div>
@@ -334,16 +337,28 @@ function DetailsPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string
                 </div>
 
                 <div className="label">Voertuig</div>
-                <div className="value">{lead.x_studio_voertuig_lead || "-"}</div>
+                <EditableField 
+                    value={lead.x_studio_voertuig_lead || ""} 
+                    onChange={(v) => onUpdate('x_studio_voertuig_lead', v)} 
+                />
                 
                 <div className="label">Velgmodel</div>
-                <div className="value">{lead.x_studio_velgmodel_lead || "-"}</div>
+                <EditableField 
+                    value={lead.x_studio_velgmodel_lead || ""} 
+                    onChange={(v) => onUpdate('x_studio_velgmodel_lead', v)} 
+                />
                 
                 <div className="label">Inchmaat</div>
-                <div className="value">{lead.x_studio_inchmaat_lead || "-"}</div>
+                <EditableField 
+                    value={lead.x_studio_inchmaat_lead || ""} 
+                    onChange={(v) => onUpdate('x_studio_inchmaat_lead', v)} 
+                />
                 
                 <div className="label">Kleur</div>
-                <div className="value">{lead.x_studio_kleur_lead || "-"}</div>
+                <EditableField 
+                    value={lead.x_studio_kleur_lead || ""} 
+                    onChange={(v) => onUpdate('x_studio_kleur_lead', v)} 
+                />
             </div>
 
             <div className="prob-bar">
