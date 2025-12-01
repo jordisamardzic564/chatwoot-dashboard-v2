@@ -9,7 +9,8 @@ import {
   RefreshCw, 
   Check, 
   Save,
-  Send
+  Send,
+  ChevronRight
 } from 'lucide-react';
 
 // --- CONFIGURATIE ---
@@ -50,9 +51,19 @@ interface ChatwootData {
   contactPhone?: string;
 }
 
+// --- STAGES CONFIG ---
+const PIPELINE_STAGES = [
+    { id: 1, name: "Nieuw" },
+    { id: 2, name: "Offerte" },
+    { id: 3, name: "Wheel rendering" },
+    { id: 4, name: "Onderhandeling" },
+    { id: 5, name: "Gewonnen" },
+    { id: 6, name: "Lost" }
+];
+
 export default function Dashboard() {
   const [lead, setLead] = useState<Lead | null>(null);
-  const [cwData, setCwData] = useState<ChatwootData>({ conversationId: null, accountId: null, contactId: null });
+  const [cwData, setCwData] = useState<ChatwootData>({ conversationId: null, accountId: 142114, contactId: null });
   const [status, setStatus] = useState<string>("Wachten op Chatwoot...");
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -86,7 +97,6 @@ export default function Dashboard() {
     };
 
     window.addEventListener("message", handleMessage);
-    // Trigger fetch info from Chatwoot
     window.parent.postMessage("chatwoot-dashboard-app:fetch-info", "*");
 
     return () => window.removeEventListener("message", handleMessage);
@@ -194,6 +204,10 @@ export default function Dashboard() {
       <div className="shell">
         <div className="surface">
           <Header lead={lead} />
+          <PipelineBar 
+            currentStageId={Array.isArray(lead.stage_id) ? lead.stage_id[0] : null} 
+            onStageSelect={(id) => updateLeadField('stage_id', id)}
+          />
           
           <div className="grid-layout">
             <DetailsPanel lead={lead} onUpdate={updateLeadField} />
@@ -213,7 +227,6 @@ export default function Dashboard() {
 // --- SUBCOMPONENTS ---
 
 function Header({ lead }: { lead: Lead }) {
-    const stageName = Array.isArray(lead.stage_id) ? lead.stage_id[1] : "Onbekend";
     const odooUrl = `https://korbach-forged.odoo.com/web#id=${lead.id}&model=crm.lead&view_type=form`;
 
     return (
@@ -222,10 +235,6 @@ function Header({ lead }: { lead: Lead }) {
                 <div className="lead-title">{lead.name || "Lead zonder titel"}</div>
                 <div className="subtitle">{lead.x_studio_source || "-"}</div>
                 <div className="badge-row">
-                    <div className="stage-pill-big">
-                        <span className="stage-dot-big"></span>
-                        <span>{stageName}</span>
-                    </div>
                     <div className="id-pill">Lead ID: <span className="value-mono">{lead.id}</span></div>
                 </div>
             </div>
@@ -239,16 +248,42 @@ function Header({ lead }: { lead: Lead }) {
     );
 }
 
+function PipelineBar({ currentStageId, onStageSelect }: { currentStageId: number | null, onStageSelect: (id: number) => void }) {
+    // Find index of current stage to determine past/current/future states
+    const currentIndex = PIPELINE_STAGES.findIndex(s => s.id === currentStageId);
+    
+    return (
+        <div className="mb-4 overflow-x-auto">
+            <div className="flex items-center bg-bg-soft rounded-md overflow-hidden border border-border-subtle text-[11px] font-medium min-w-max">
+                {PIPELINE_STAGES.map((stage, idx) => {
+                    const isActive = stage.id === currentStageId;
+                    const isPast = currentIndex > -1 && idx < currentIndex;
+                    
+                    let bgClass = "bg-bg-soft text-text-secondary hover:bg-bg-elevated";
+                    if (isActive) bgClass = "bg-accent/10 text-accent border-b-2 border-accent";
+                    else if (isPast) bgClass = "text-text-primary/70";
+
+                    return (
+                        <button
+                            key={stage.id}
+                            onClick={() => onStageSelect(stage.id)}
+                            className={`
+                                relative px-3 py-2 flex items-center justify-center transition-colors
+                                ${bgClass}
+                                ${idx !== PIPELINE_STAGES.length - 1 ? 'border-r border-border-subtle/30' : ''}
+                            `}
+                        >
+                            <span className="whitespace-nowrap">{stage.name}</span>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 function DetailsPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string, val: any) => void }) {
     const prob = typeof lead.probability === "number" ? lead.probability : 0;
-
-    // Stages mapping (Example - should ideally come from API)
-    const STAGES = [
-        { id: 1, name: "New" },
-        { id: 2, name: "Qualified" },
-        { id: 3, name: "Proposition" },
-        { id: 4, name: "Won" }
-    ];
 
     return (
         <div className="panel">
@@ -284,16 +319,7 @@ function DetailsPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string
                 <div className="label">Aangemaakt</div>
                 <div className="value">{lead.create_date?.split(' ')[0] || "-"}</div>
 
-                <div className="label">Fase</div>
-                <div className="value">
-                     <select 
-                        className="select-edit"
-                        value={Array.isArray(lead.stage_id) ? lead.stage_id[0] : ""}
-                        onChange={(e) => onUpdate('stage_id', parseInt(e.target.value))}
-                     >
-                        {STAGES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                     </select>
-                </div>
+                {/* Fase removed from here as it is now in the top bar */}
 
                 <div className="label">Probability</div>
                 <div className="value flex items-center gap-1 justify-end">
@@ -451,7 +477,7 @@ function ActionsPanel({ lead, cwData, setStatus, onLeadUpdate }: {
 
             <div className="actions-row">
                 <button className="btn btn-ghost text-accent border-accent-soft" onClick={runAutoFill}>
-                    <Bot size={16} /> Auto-fill Lead
+                    <Bot size={16} /> AI Chat Analyse
                 </button>
                 
                 <button className="btn btn-ghost" onClick={createQuote}>
@@ -505,4 +531,3 @@ function ActionsPanel({ lead, cwData, setStatus, onLeadUpdate }: {
         </div>
     );
 }
-

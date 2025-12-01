@@ -199,28 +199,37 @@ body {
   transition: width 0.3s ease;
 }
 
-.stage-pill-big {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: rgba(216,255,60,0.12);
-  border: 1px solid rgba(216,255,60,0.35);
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+/* Chevron style pipeline */
+.pipeline-chevron {
+  position: relative;
+  background: var(--bg-soft);
+  color: var(--text-secondary);
 }
-
-.stage-dot-big {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 12px rgba(216,255,60,0.8);
+.pipeline-chevron:after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -10px;
+  width: 0; 
+  height: 0; 
+  border-top: 16px solid transparent;
+  border-bottom: 16px solid transparent;
+  border-left: 10px solid var(--bg-soft);
+  z-index: 2;
 }
+.pipeline-chevron:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0; 
+  height: 0; 
+  border-top: 16px solid transparent;
+  border-bottom: 16px solid transparent;
+  border-left: 10px solid var(--bg);
+  z-index: 1;
+}
+/* We use simpler flex approach in component for cleanliness */
 
 .note-textarea {
   width: 100%;
@@ -325,4 +334,3 @@ body {
   align-self: flex-start;
   color: var(--accent);
 }
-
