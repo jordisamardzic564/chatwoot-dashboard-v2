@@ -14,18 +14,15 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATIE ---
-// We gebruiken nu de interne proxy endpoint
-const API_PROXY = "/api/webhook";
-
-// We mappen de oude URL's naar endpoint namen voor de proxy
-const WEBHOOK_NAMES = {
-  LOOKUP: "chatwoot-odoo-lookup",
-  CREATE_QUOTE: "chatwoot-odoo-create-quote",
-  ADD_NOTE: "chatwoot-odoo-add-note",
-  AI_ANALYZE: "chatwoot-ai-analyze",
-  MANUAL_SYNC: "chatwoot-manual-sync",
-  UPDATE_LEAD: "odoo-update-lead",
-  ASK_AI: "ask-ai-agent",
+const API_BASE = "https://n8n.srv865019.hstgr.cloud/webhook";
+const ENDPOINTS = {
+  LOOKUP: `${API_BASE}/chatwoot-odoo-lookup`,
+  CREATE_QUOTE: `${API_BASE}/chatwoot-odoo-create-quote`,
+  ADD_NOTE: `${API_BASE}/chatwoot-odoo-add-note`,
+  AI_ANALYZE: `${API_BASE}/chatwoot-ai-analyze`,
+  MANUAL_SYNC: `${API_BASE}/chatwoot-manual-sync`,
+  UPDATE_LEAD: `${API_BASE}/odoo-update-lead`,
+  ASK_AI: `${API_BASE}/ask-ai-agent`,
 };
 
 // --- TYPES ---
@@ -63,17 +60,6 @@ const PIPELINE_STAGES = [
     { id: 5, name: "Gewonnen" },
     { id: 6, name: "Lost" }
 ];
-
-// --- HELPER FOR PROXY CALLS ---
-async function callProxy(endpoint: string, data: any = {}) {
-    const res = await fetch(API_PROXY, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint, ...data }),
-    });
-    if (!res.ok) throw new Error("API call failed");
-    return res.json();
-}
 
 export default function Dashboard() {
   const [lead, setLead] = useState<Lead | null>(null);
@@ -120,10 +106,9 @@ export default function Dashboard() {
     setLoading(true);
     setStatus("Odoo data laden...");
     try {
-      // GET requests moeten hier ook via POST naar de proxy (omdat proxy body nodig heeft)
-      // Of we passen de proxy aan. Voor nu sturen we contact_id in body.
-      const data = await callProxy(WEBHOOK_NAMES.LOOKUP, { contact_id: contactId });
-      
+      const res = await fetch(`${ENDPOINTS.LOOKUP}?contact_id=${contactId}`);
+      if (!res.ok) throw new Error("Fetch failed");
+      const data = await res.json();
       setLead(data.lead || null);
       setStatus(data.lead ? "" : "Geen gekoppelde lead gevonden.");
     } catch (e) {
@@ -139,12 +124,16 @@ export default function Dashboard() {
     setSyncing(true);
     setStatus("Syncen met Odoo...");
     try {
-      const data = await callProxy(WEBHOOK_NAMES.MANUAL_SYNC, {
+      const res = await fetch(ENDPOINTS.MANUAL_SYNC, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           chatwoot_id: cwData.contactId,
           name: cwData.contactName,
           phone: cwData.contactPhone
+        })
       });
-
+      const data = await res.json();
       if (data.lead) {
         setLead(data.lead);
         setStatus("Gesynchroniseerd!");
@@ -165,7 +154,11 @@ export default function Dashboard() {
     setLead({ ...lead, [field]: value });
     
     try {
-        await callProxy(WEBHOOK_NAMES.UPDATE_LEAD, { lead_id: lead.id, [field]: value });
+        await fetch(ENDPOINTS.UPDATE_LEAD, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lead_id: lead.id, [field]: value })
+        });
     } catch (e) {
         console.error("Update failed", e);
         setLead(oldLead); // Revert
@@ -416,9 +409,18 @@ function ActionsPanel({ lead, cwData, setStatus, onLeadUpdate }: {
     const createQuote = async () => {
         setStatus("Quote aanmaken...");
         try {
-            const data = await callProxy(WEBHOOK_NAMES.CREATE_QUOTE, { lead_id: lead.id });
-            if (data.url) window.open(data.url, "_blank");
-            setStatus("Quote aangemaakt.");
+            const res = await fetch(ENDPOINTS.CREATE_QUOTE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lead_id: lead.id })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.url) window.open(data.url, "_blank");
+                setStatus("Quote aangemaakt.");
+            } else {
+                setStatus("Error bij quote.");
+            }
         } catch {
             setStatus("Error bij quote.");
         }
@@ -428,7 +430,11 @@ function ActionsPanel({ lead, cwData, setStatus, onLeadUpdate }: {
         if (!note.trim()) return;
         setStatus("Notitie verzenden...");
         try {
-            await callProxy(WEBHOOK_NAMES.ADD_NOTE, { lead_id: lead.id, note });
+            await fetch(ENDPOINTS.ADD_NOTE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lead_id: lead.id, note })
+            });
             setNote("");
             setStatus("Notitie toegevoegd.");
         } catch {
@@ -439,13 +445,17 @@ function ActionsPanel({ lead, cwData, setStatus, onLeadUpdate }: {
     const runAutoFill = async () => {
         setStatus("AI leest chat...");
         try {
-            const data = await callProxy(WEBHOOK_NAMES.AI_ANALYZE, {
-                lead_id: lead.id,
-                contact_id: cwData.contactId,
-                conversation_id: cwData.conversationId,
-                account_id: cwData.accountId
+            const res = await fetch(ENDPOINTS.AI_ANALYZE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    lead_id: lead.id,
+                    contact_id: cwData.contactId,
+                    conversation_id: cwData.conversationId,
+                    account_id: cwData.accountId
+                })
             });
-            
+            const data = await res.json();
             if (data.updates) {
                 onLeadUpdate({ ...lead, ...data.updates });
                 setStatus("Lead geüpdatet door AI.");
@@ -459,7 +469,12 @@ function ActionsPanel({ lead, cwData, setStatus, onLeadUpdate }: {
         if (!aiQuery.trim()) return;
         setLoadingAi(true);
         try {
-            const data = await callProxy(WEBHOOK_NAMES.ASK_AI, { lead_id: lead.id, query: aiQuery });
+            const res = await fetch(ENDPOINTS.ASK_AI, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lead_id: lead.id, query: aiQuery })
+            });
+            const data = await res.json();
             setAiResponse(data.answer || "Geen antwoord ontvangen.");
         } catch {
             setAiResponse("Fout bij ophalen antwoord.");
