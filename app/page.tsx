@@ -275,21 +275,48 @@ export default function Dashboard() {
             {searchResults.length > 0 && (
                 <div className="mt-4 flex flex-col gap-2">
                     {searchResults.map((resLead) => (
-                        <div key={resLead.id} className="flex justify-between items-center p-2 bg-bg-soft rounded border border-border-subtle">
-                            <div>
-                                <div className="font-semibold text-xs">{resLead.name}</div>
-                                <div className="text-[10px] text-text-secondary">
-                                    {resLead.email_from || "-"} <br/> {resLead.phone || "-"}
+                        <div key={resLead.id} className="p-3 bg-bg-soft rounded border border-border-subtle hover:border-border-subtle/80 transition-colors">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <div className="font-semibold text-sm text-text-primary">{resLead.name}</div>
+                                    <div className="text-xs text-text-secondary mt-0.5">
+                                       {resLead.email_from}
+                                       {resLead.email_from && resLead.phone && <span className="mx-1">•</span>}
+                                       {resLead.phone}
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                     <div className="text-[10px] text-text-secondary font-mono">
+                                        {resLead.create_date ? resLead.create_date.split(' ')[0] : ''}
+                                     </div>
                                 </div>
                             </div>
-                            <button 
-                                onClick={() => handleLink(resLead.id)}
-                                disabled={isLinking}
-                                className="btn btn-ghost text-xs px-2 py-1"
-                            >
-                                {isLinking ? <RefreshCw className="animate-spin" size={12} /> : <Link2 size={12} />}
-                                Koppel
-                            </button>
+
+                            <div className="flex items-center justify-between gap-4 pt-2 border-t border-border-subtle/30">
+                                 <div className="text-xs font-medium text-accent truncate">
+                                    {resLead.x_studio_voertuig_lead || <span className="text-text-secondary opacity-50">Geen voertuig</span>}
+                                 </div>
+                                 
+                                 <div className="flex gap-2">
+                                    <a 
+                                        href={`https://korbach-forged.odoo.com/web#id=${resLead.id}&model=crm.lead&view_type=form`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-ghost text-xs px-2 h-7 min-h-0"
+                                        title="Bekijk in Odoo"
+                                    >
+                                        <ExternalLink size={12} />
+                                    </a>
+                                    <button 
+                                        onClick={() => handleLink(resLead.id)}
+                                        disabled={isLinking}
+                                        className="btn text-xs px-3 h-7 min-h-0"
+                                    >
+                                        {isLinking ? <RefreshCw className="animate-spin" size={12} /> : <Link2 size={12} />}
+                                        Koppel
+                                    </button>
+                                 </div>
+                            </div>
                         </div>
                     ))}
                 </div>
