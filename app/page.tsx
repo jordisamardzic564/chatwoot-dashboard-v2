@@ -10,7 +10,9 @@ import {
   Check, 
   Save,
   Send,
-  ChevronRight
+  ChevronRight,
+  Search,
+  Link2
 } from 'lucide-react';
 
 // --- CONFIGURATIE ---
@@ -23,6 +25,8 @@ const ENDPOINTS = {
   MANUAL_SYNC: `${API_BASE}/chatwoot-manual-sync`,
   UPDATE_LEAD: `${API_BASE}/odoo-update-lead`,
   ASK_AI: `${API_BASE}/ask-ai-agent`,
+  SEARCH: `${API_BASE}/chatwoot-odoo-search`,
+  MANUAL_LINK: `${API_BASE}/chatwoot-odoo-manual-link`,
 };
 
 // --- TYPES ---
@@ -67,6 +71,12 @@ export default function Dashboard() {
   const [status, setStatus] = useState<string>("Wachten op Chatwoot...");
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  
+  // Search & Link state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
 
   // --- INITIAL LOAD & CHATWOOT LISTENER ---
   useEffect(() => {
@@ -119,6 +129,62 @@ export default function Dashboard() {
   };
 
   // --- ACTIONS ---
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+        setStatus("Vul een zoekterm in.");
+        return;
+    }
+    setIsSearching(true);
+    setStatus("Zoeken in Odoo...");
+    setSearchResults([]);
+
+    try {
+        const res = await fetch(ENDPOINTS.SEARCH, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: searchQuery })
+        });
+        const data = await res.json();
+        setSearchResults(data.leads || []);
+        if ((data.leads || []).length === 0) {
+            setStatus("Geen resultaten gevonden.");
+        } else {
+            setStatus("");
+        }
+    } catch (e) {
+        console.error(e);
+        setStatus("Fout bij zoeken.");
+    } finally {
+        setIsSearching(false);
+    }
+  };
+
+  const handleLink = async (odooLeadId: number) => {
+    if (!cwData.contactId) return;
+    setIsLinking(true);
+    setStatus("Koppelen...");
+    try {
+        const res = await fetch(ENDPOINTS.MANUAL_LINK, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                odoo_lead_id: odooLeadId,
+                chatwoot_contact_id: cwData.contactId 
+            })
+        });
+        if (res.ok) {
+            setStatus("Gekoppeld! Data laden...");
+            await loadOdoo(cwData.contactId);
+        } else {
+            setStatus("Koppelen mislukt.");
+        }
+    } catch (e) {
+        setStatus("Fout bij koppelen.");
+    } finally {
+        setIsLinking(false);
+    }
+  };
+
   const handleManualSync = async () => {
     if (!cwData.contactId) return;
     setSyncing(true);
@@ -177,18 +243,60 @@ export default function Dashboard() {
           <div className="muted-banner flex flex-col gap-4 items-center text-center py-8">
              <div>
                 <strong className="block text-white mb-1">Geen lead gevonden</strong>
-                <span className="text-xs opacity-70">Deze contactpersoon staat nog niet in Odoo CRM.</span>
+                <span className="text-xs opacity-70">Zoek handmatig in Odoo om te koppelen.</span>
              </div>
-             <button 
-                onClick={handleManualSync} 
-                disabled={syncing}
-                className="btn"
-            >
-                {syncing ? <RefreshCw className="animate-spin" /> : <RefreshCw />}
-                Sync met Odoo
-             </button>
           </div>
-          {status && <div id="status" className="mt-4 text-center">{status}</div>}
+          
+          <div className="panel mt-4">
+            <div className="panel-title-row">
+                <div className="panel-title">Zoek & Koppel</div>
+                <div className="panel-dot"></div>
+            </div>
+            
+            <div className="flex gap-2">
+                <input 
+                    type="text" 
+                    className="note-textarea mt-0 h-10 min-h-0" 
+                    placeholder="Zoek naam, email, tel..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                />
+                <button 
+                    onClick={handleSearch} 
+                    disabled={isSearching}
+                    className="btn"
+                >
+                    {isSearching ? <RefreshCw className="animate-spin" size={14} /> : <Search size={14} />}
+                    Zoek
+                </button>
+            </div>
+
+            {searchResults.length > 0 && (
+                <div className="mt-4 flex flex-col gap-2">
+                    {searchResults.map((resLead) => (
+                        <div key={resLead.id} className="flex justify-between items-center p-2 bg-bg-soft rounded border border-border-subtle">
+                            <div>
+                                <div className="font-semibold text-xs">{resLead.name}</div>
+                                <div className="text-[10px] text-text-secondary">
+                                    {resLead.email_from || "-"} <br/> {resLead.phone || "-"}
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => handleLink(resLead.id)}
+                                disabled={isLinking}
+                                className="btn btn-ghost text-xs px-2 py-1"
+                            >
+                                {isLinking ? <RefreshCw className="animate-spin" size={12} /> : <Link2 size={12} />}
+                                Koppel
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+            
+            {status && <div className="mt-2 text-center text-xs text-text-secondary">{status}</div>}
+          </div>
         </div>
       </div>
     );
