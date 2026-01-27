@@ -257,11 +257,14 @@ const N8N_LEAD_URL  = "https://n8n.srv865019.hstgr.cloud/webhook/chatwoot-odoo-l
 const N8N_QUOTE_URL = "https://n8n.srv865019.hstgr.cloud/webhook/chatwoot-odoo-create-quote";
 const N8N_NOTE_URL  = "https://n8n.srv865019.hstgr.cloud/webhook/chatwoot-odoo-add-note";
 const N8N_AI_URL    = "https://n8n.srv865019.hstgr.cloud/webhook/chatwoot-ai-analyze";
+const N8N_SEARCH_URL = "https://n8n.srv865019.hstgr.cloud/webhook/chatwoot-odoo-search";
+const N8N_LINK_URL   = "https://n8n.srv865019.hstgr.cloud/webhook/chatwoot-odoo-manual-link";
 
 // --- GLOBALE STATE ---
 let currentLead = null;
 let currentConversationId = null;
-let currentAccountId = null; // <--- NIEUW
+let currentAccountId = null;
+let currentContactId = null; // <--- Toegevoegd voor koppelen
 
 function setStatus(msg) {
   document.getElementById("status").textContent = msg || "";
@@ -273,11 +276,36 @@ function renderLead(lead) {
   currentLead = lead || null;
 
   if (!lead) {
+    // GEEN LEAD GEVONDEN -> TOON ZOEK SCHERM
     content.innerHTML = `
       <div class="muted-banner">
-        <strong>Geen lead gevonden.</strong><br>
-        Deze Chatwoot contact heeft nog geen matchende lead in Odoo.
-      </div>`;
+        <strong>Geen lead gevonden</strong><br>
+        <span style="opacity:0.7; font-size:12px;">Zoek handmatig in Odoo om te koppelen.</span>
+      </div>
+
+      <div class="panel" style="margin-top: 12px;">
+         <div class="panel-title-row">
+            <div class="panel-title">Zoek & Koppel</div>
+            <div class="panel-dot"></div>
+         </div>
+         
+         <div style="display: flex; gap: 6px;">
+            <input type="text" id="search-input" class="note-textarea" 
+                   style="min-height: 38px; height: 38px; margin-top:0;"
+                   placeholder="Zoek op naam, email of telefoon...">
+            <button id="btn-search" class="btn">Zoek</button>
+         </div>
+         
+         <div id="search-results" style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+    `;
+    
+    // Attach search handlers
+    document.getElementById("btn-search").onclick = searchOdoo;
+    document.getElementById("search-input").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") searchOdoo();
+    });
+    
     return;
   }
 
@@ -456,6 +484,89 @@ async function runAiAnalysis() {
   }
 }
 
+// --- ZOEK & KOPPEL LOGICA ---
+async function searchOdoo() {
+    const query = document.getElementById("search-input").value.trim();
+    if (!query) return setStatus("Vul een zoekterm in.");
+    
+    const resultsContainer = document.getElementById("search-results");
+    resultsContainer.innerHTML = '<div style="text-align:center; color:var(--text-secondary);">Zoeken...</div>';
+    
+    try {
+        const res = await fetch(N8N_SEARCH_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query })
+        });
+        
+        const data = await res.json();
+        const leads = data.leads || [];
+        
+        resultsContainer.innerHTML = "";
+        
+        if (leads.length === 0) {
+            resultsContainer.innerHTML = '<div style="text-align:center; color:var(--text-secondary);">Geen resultaten gevonden.</div>';
+            return;
+        }
+        
+        leads.forEach(lead => {
+            const div = document.createElement("div");
+            div.className = "surface"; // Reuse surface style for card look inside panel? Or simple styling
+            div.style.padding = "8px";
+            div.style.marginBottom = "0";
+            div.style.background = "rgba(255,255,255,0.03)";
+            div.style.border = "1px solid var(--border-subtle)";
+            div.style.display = "flex";
+            div.style.justifyContent = "space-between";
+            div.style.alignItems = "center";
+            
+            div.innerHTML = `
+                <div>
+                    <div style="font-weight:600; font-size:13px;">${lead.name}</div>
+                    <div style="font-size:11px; color:var(--text-secondary);">
+                        ${lead.email_from || "-"} <br> ${lead.phone || "-"}
+                    </div>
+                </div>
+                <button class="btn btn-ghost" style="font-size:11px; padding: 4px 8px;" onclick="linkLead(${lead.id})">
+                    Koppel
+                </button>
+            `;
+            resultsContainer.appendChild(div);
+        });
+        
+    } catch (e) {
+        console.error(e);
+        resultsContainer.innerHTML = '<div style="text-align:center; color:var(--danger);">Fout bij zoeken.</div>';
+    }
+}
+
+async function linkLead(odooLeadId) {
+    if (!currentContactId) return setStatus("Geen Chatwoot Contact ID beschikbaar.");
+    
+    setStatus(`Koppelen van Lead ${odooLeadId}...`);
+    
+    try {
+        const res = await fetch(N8N_LINK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                odoo_lead_id: odooLeadId,
+                chatwoot_contact_id: currentContactId
+            })
+        });
+        
+        if (res.ok) {
+            setStatus("Succesvol gekoppeld! Herladen...");
+            loadOdoo(currentContactId);
+        } else {
+            setStatus("Koppelen mislukt.");
+        }
+    } catch (e) {
+        console.error(e);
+        setStatus("Fout bij koppelen.");
+    }
+}
+
 async function createQuote() {
   if (!currentLead) return;
   setStatus("Quote aanmaken...");
@@ -518,7 +629,8 @@ window.addEventListener("message", (event) => {
       setStatus("Geen Chatwoot contact ID.");
       return renderLead(null);
     }
-
+    
+    currentContactId = contactId; // <--- Opslaan voor later gebruik
     loadOdoo(contactId);
   } catch {
     setStatus("Context parse error.");
