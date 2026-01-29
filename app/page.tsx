@@ -39,6 +39,22 @@ const ENDPOINTS = {
 };
 
 // --- TYPES ---
+interface VehicleResult {
+  name: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_generation: string;
+  vehicle_trim: string;
+  vehicle_engine: string;
+  tech_bolt_pattern: string;
+  tech_center_bore: string;
+  tech_torque: string;
+  oem_front_rim: string;
+  oem_rear_rim: string;
+  oem_front_tire: string;
+  oem_rear_tire: string;
+}
+
 interface Order {
   id: number;
   name: string;
@@ -735,7 +751,7 @@ function PipelineBar({ currentStageId, onStageSelect }: { currentStageId: number
 
 function VehicleSearch({ onSelect }: { onSelect: (vehicle: string) => void }) {
     const [query, setQuery] = useState("");
-    const [results, setResults] = useState<any[]>([]);
+    const [results, setResults] = useState<VehicleResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
 
@@ -752,7 +768,7 @@ function VehicleSearch({ onSelect }: { onSelect: (vehicle: string) => void }) {
                 body: JSON.stringify({ query })
             });
             const data = await res.json();
-            const items = data.results || data.vehicles || (Array.isArray(data) ? data : []);
+            const items = data.results || (Array.isArray(data) ? data : []);
             setResults(items);
         } catch (e) {
             console.error("Vehicle search failed", e);
@@ -805,27 +821,47 @@ function VehicleSearch({ onSelect }: { onSelect: (vehicle: string) => void }) {
                     </div>
                 )}
 
-                <div className="flex flex-col gap-1 pr-1">
-                    {results.map((item, idx) => {
-                        const name = item.name || item.title || `${item.make} ${item.model} ${item.year}`;
-                        const details = item.trim || item.modification || "";
-                        
-                        return (
-                            <button
-                                key={idx}
-                                className="text-left p-3 rounded-md hover:bg-bg-elevated border border-transparent hover:border-border-subtle transition-all group flex items-start gap-3"
-                                onClick={() => onSelect(name)}
-                            >
-                                <div className="mt-0.5 p-1.5 rounded-full bg-bg-elevated group-hover:bg-accent/10 transition-colors">
-                                    <Car size={14} className="text-text-secondary group-hover:text-accent" />
+                <div className="flex flex-col gap-2 pr-1">
+                    {results.map((item, idx) => (
+                        <button
+                            key={idx}
+                            className="text-left w-full p-3 rounded-md bg-bg-elevated/50 hover:bg-bg-elevated border border-border-subtle hover:border-accent/50 transition-all group relative overflow-hidden"
+                            onClick={() => onSelect(item.name)}
+                        >
+                            <div className="absolute top-0 left-0 w-[2px] h-full bg-accent/0 group-hover:bg-accent transition-colors"></div>
+                            
+                            <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                    <Car size={14} className="text-accent/70 group-hover:text-accent" />
+                                    <span className="text-sm font-semibold text-text-primary group-hover:text-white transition-colors">
+                                        {item.vehicle_make} {item.vehicle_model} <span className="text-text-secondary font-normal">{item.vehicle_generation}</span>
+                                    </span>
                                 </div>
-                                <div>
-                                    <div className="text-xs font-semibold text-text-primary group-hover:text-accent transition-colors">{name}</div>
-                                    {details && <div className="text-[11px] text-text-secondary mt-0.5">{details}</div>}
+                                <div className="text-[10px] bg-bg-soft px-1.5 py-0.5 rounded border border-border-subtle text-text-secondary font-mono">
+                                    {item.vehicle_trim}
                                 </div>
-                            </button>
-                        );
-                    })}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
+                                <div className="flex justify-between items-center text-text-secondary">
+                                    <span>Steekmaat:</span>
+                                    <span className="text-text-primary font-mono">{item.tech_bolt_pattern}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-text-secondary">
+                                    <span>Naafgat:</span>
+                                    <span className="text-text-primary font-mono">{item.tech_center_bore}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-text-secondary">
+                                    <span>OEM Voor:</span>
+                                    <span className="text-text-primary font-mono truncate ml-2" title={item.oem_front_rim}>{item.oem_front_rim}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-text-secondary">
+                                    <span>OEM Achter:</span>
+                                    <span className="text-text-primary font-mono truncate ml-2" title={item.oem_rear_rim}>{item.oem_rear_rim}</span>
+                                </div>
+                            </div>
+                        </button>
+                    ))}
                 </div>
             </div>
         </div>
