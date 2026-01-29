@@ -806,6 +806,13 @@ function VehicleSearch({ onSelect }: { onSelect: (vehicle: VehicleResult) => voi
         }
     };
 
+    const handleSelect = (item: VehicleResult) => {
+        onSelect(item);
+        setResults([]);
+        setQuery("");
+        setSearched(false);
+    };
+
     return (
         <div className="flex flex-col h-full bg-bg-soft p-2">
             <div className="flex gap-2 mb-2">
@@ -851,11 +858,11 @@ function VehicleSearch({ onSelect }: { onSelect: (vehicle: VehicleResult) => voi
 
                 <div className="flex flex-col gap-2 pr-1">
                     {results.map((item, idx) => (
-                            <button
-                                key={idx}
-                                className="text-left w-full p-3 rounded-md bg-bg-elevated/50 hover:bg-bg-elevated border border-border-subtle hover:border-accent/50 transition-all group relative overflow-hidden"
-                                onClick={() => onSelect(item)}
-                            >
+                        <button
+                            key={idx}
+                            className="text-left w-full p-3 rounded-md bg-bg-elevated/50 hover:bg-bg-elevated border border-border-subtle hover:border-accent/50 transition-all group relative overflow-hidden"
+                            onClick={() => handleSelect(item)}
+                        >
                             <div className="absolute top-0 left-0 w-[2px] h-full bg-accent/0 group-hover:bg-accent transition-colors"></div>
                             
                             <div className="flex items-start justify-between mb-2">
@@ -935,6 +942,10 @@ function ActionsPanel({ lead, cwData, setStatus, onLeadUpdate }: {
     const [loadingAi, setLoadingAi] = useState(false);
 
     const createQuote = async () => {
+        if (!lead.x_studio_voertuig_lead) {
+            if (!confirm("Er is nog geen voertuig geselecteerd. Wil je toch doorgaan met de offerte?")) return;
+        }
+        
         setStatus("Quote aanmaken...");
         try {
             const res = await fetch(ENDPOINTS.CREATE_QUOTE, {
