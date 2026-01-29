@@ -385,7 +385,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="w-full max-w-[1600px] mx-auto p-4">
       {status && <div id="status">{status}</div>}
       <div className="shell">
         <div className="surface">
@@ -396,17 +396,31 @@ export default function Dashboard() {
           />
           
           <div className="grid-layout">
-            <DetailsPanel lead={lead} onUpdate={updateLeadField} />
-            <ActionsPanel 
-                lead={lead} 
-                cwData={cwData} 
-                setStatus={setStatus} 
-                onLeadUpdate={(l) => setLead(l)}
-            />
-          </div>
-          
-          <div className="mt-4">
-             <OrdersPanel leadId={lead.id} />
+            {/* LINKER KOLOM: KLANT INFO */}
+            <div className="flex flex-col gap-4">
+                <LeadPanel lead={lead} onUpdate={updateLeadField} />
+                <div className="hidden lg:block">
+                     <OrdersPanel leadId={lead.id} />
+                </div>
+            </div>
+
+            {/* MIDDEN KOLOM: VOERTUIG & CONFIGURATIE (COCKPIT) */}
+            <div className="flex flex-col gap-4 h-full">
+                <VehiclePanel lead={lead} onUpdate={updateLeadField} />
+            </div>
+
+            {/* RECHTER KOLOM: ACTIES & COMMUNICATIE */}
+            <div className="flex flex-col gap-4">
+                <ActionsPanel 
+                    lead={lead} 
+                    cwData={cwData} 
+                    setStatus={setStatus} 
+                    onLeadUpdate={(l) => setLead(l)}
+                />
+                 <div className="lg:hidden">
+                     <OrdersPanel leadId={lead.id} />
+                </div>
+            </div>
           </div>
         </div>
       </div>
@@ -415,6 +429,121 @@ export default function Dashboard() {
 }
 
 // --- SUBCOMPONENTS ---
+
+function LeadPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string, val: any) => void }) {
+    const prob = typeof lead.probability === "number" ? lead.probability : 0;
+    
+    return (
+        <div className="panel h-full">
+            <div className="panel-title-row">
+                <div className="panel-title">Klantgegevens</div>
+                <div className="panel-dot"></div>
+            </div>
+            
+            <div className="data-grid">
+                <div className="label">Naam</div>
+                <EditableField 
+                    value={lead.x_studio_naam || lead.name || ""} 
+                    onChange={(v) => onUpdate('name', v)} 
+                />
+                
+                <div className="label">Telefoon</div>
+                <EditableField 
+                    value={lead.phone || ""} 
+                    onChange={(v) => onUpdate('phone', v)} 
+                    className="value-mono"
+                />
+                
+                <div className="label">Email</div>
+                <EditableField 
+                    value={lead.email_from || ""} 
+                    onChange={(v) => onUpdate('email_from', v)} 
+                    className="value-mono"
+                />
+
+                <div className="label">Bron</div>
+                <EditableField 
+                    value={lead.x_studio_source || ""} 
+                    onChange={(v) => onUpdate('x_studio_source', v)} 
+                />
+                
+                <div className="label">Aangemaakt</div>
+                <div className="value">{lead.create_date?.split(' ')[0] || "-"}</div>
+
+                <div className="label">Probability</div>
+                <div className="value flex items-center gap-1 justify-end">
+                    <input 
+                        type="number" 
+                        className="input-edit w-16 text-right" 
+                        value={prob}
+                        onChange={(e) => onUpdate('probability', parseFloat(e.target.value))}
+                        min={0} max={100}
+                    />
+                    <span>%</span>
+                </div>
+            </div>
+
+            <div className="prob-bar mt-4">
+                <div className="prob-fill" style={{ width: `${Math.min(prob, 100)}%` }}></div>
+            </div>
+        </div>
+    )
+}
+
+function VehiclePanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string, val: any) => void }) {
+    return (
+        <div className="panel flex flex-col h-full min-h-[400px]">
+            <div className="panel-title-row">
+                <div className="panel-title">Voertuig Configuratie</div>
+                <div className="panel-dot"></div>
+            </div>
+
+            <div className="mb-4 flex-1">
+                 <div className="text-[10px] uppercase text-text-secondary font-bold tracking-wider mb-2">Zoek Voertuig</div>
+                 <div className="h-full min-h-[250px] border border-border-subtle rounded-lg bg-bg-soft overflow-hidden">
+                    <VehicleSearch 
+                        onSelect={(vehicleName) => onUpdate('x_studio_voertuig_lead', vehicleName)} 
+                    />
+                 </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-auto pt-4 border-t border-border-subtle/30">
+                 <div>
+                    <div className="label mb-1">Huidig Voertuig</div>
+                    <EditableField 
+                        value={lead.x_studio_voertuig_lead || ""} 
+                        onChange={(v) => onUpdate('x_studio_voertuig_lead', v)} 
+                        className="bg-bg-elevated p-2 rounded border border-border-subtle"
+                    />
+                 </div>
+                 <div>
+                    <div className="label mb-1">Velgmodel</div>
+                    <EditableField 
+                        value={lead.x_studio_velgmodel_lead || ""} 
+                        onChange={(v) => onUpdate('x_studio_velgmodel_lead', v)} 
+                        className="bg-bg-elevated p-2 rounded border border-border-subtle"
+                    />
+                 </div>
+                 <div>
+                    <div className="label mb-1">Inchmaat</div>
+                    <EditableField 
+                        value={lead.x_studio_inchmaat_lead || ""} 
+                        onChange={(v) => onUpdate('x_studio_inchmaat_lead', v)} 
+                        className="bg-bg-elevated p-2 rounded border border-border-subtle"
+                    />
+                 </div>
+                 <div>
+                    <div className="label mb-1">Kleur</div>
+                    <EditableField 
+                        value={lead.x_studio_kleur_lead || ""} 
+                        onChange={(v) => onUpdate('x_studio_kleur_lead', v)} 
+                        className="bg-bg-elevated p-2 rounded border border-border-subtle"
+                    />
+                 </div>
+            </div>
+        </div>
+    );
+}
 
 function OrdersPanel({ leadId }: { leadId: number }) {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -454,7 +583,7 @@ function OrdersPanel({ leadId }: { leadId: number }) {
     if (error) return <div className="panel p-4 text-xs text-red-400 text-center">{error}</div>;
     
     return (
-        <div className="panel">
+        <div className="panel h-full">
             <div className="panel-title-row">
                 <div className="panel-title">Offertes & Orders</div>
                 <div className="panel-dot"></div>
@@ -604,123 +733,6 @@ function PipelineBar({ currentStageId, onStageSelect }: { currentStageId: number
     );
 }
 
-function DetailsPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string, val: any) => void }) {
-    const prob = typeof lead.probability === "number" ? lead.probability : 0;
-    const [showVehicleSearch, setShowVehicleSearch] = useState(false);
-
-    return (
-        <div className="panel relative">
-            <div className="panel-title-row">
-                <div className="panel-title">Lead & Voertuig Configuratie</div>
-                <div className="panel-dot"></div>
-            </div>
-
-            {showVehicleSearch && (
-                <div className="absolute inset-0 z-10 bg-surface rounded-lg border border-border-subtle p-3 flex flex-col shadow-xl">
-                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-border-subtle/50">
-                        <span className="font-medium text-xs">Zoek Voertuig (Wheel-Size API)</span>
-                        <button onClick={() => setShowVehicleSearch(false)} className="text-text-secondary hover:text-text-primary">
-                            <X size={14} />
-                        </button>
-                    </div>
-                    <VehicleSearch 
-                        onSelect={(vehicleName) => {
-                            onUpdate('x_studio_voertuig_lead', vehicleName);
-                            setShowVehicleSearch(false);
-                        }} 
-                    />
-                </div>
-            )}
-
-            <div className="data-grid">
-                <div className="label">Naam</div>
-                <EditableField 
-                    value={lead.x_studio_naam || lead.name || ""} 
-                    onChange={(v) => onUpdate('name', v)} 
-                />
-                
-                <div className="label">Telefoon</div>
-                <EditableField 
-                    value={lead.phone || ""} 
-                    onChange={(v) => onUpdate('phone', v)} 
-                    className="value-mono"
-                />
-                
-                <div className="label">Email</div>
-                <EditableField 
-                    value={lead.email_from || ""} 
-                    onChange={(v) => onUpdate('email_from', v)} 
-                    className="value-mono"
-                />
-
-                <div className="label">Bron</div>
-                <EditableField 
-                    value={lead.x_studio_source || ""} 
-                    onChange={(v) => onUpdate('x_studio_source', v)} 
-                />
-                
-                <div className="label">Aangemaakt</div>
-                <div className="value">{lead.create_date?.split(' ')[0] || "-"}</div>
-
-                <div className="label">Probability</div>
-                <div className="value flex items-center gap-1 justify-end">
-                    <input 
-                        type="number" 
-                        className="input-edit w-16 text-right" 
-                        value={prob}
-                        onChange={(e) => onUpdate('probability', parseFloat(e.target.value))}
-                        min={0} max={100}
-                    />
-                    <span>%</span>
-                </div>
-
-                <div className="col-span-2 border-t border-border-subtle/30 my-2 pt-2 pb-1">
-                    <div className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-2">Offerte Configuratie</div>
-                </div>
-
-                <div className="label flex items-center gap-1">
-                    Voertuig
-                    <button 
-                        onClick={() => setShowVehicleSearch(true)}
-                        className="p-1 hover:bg-bg-elevated rounded text-accent transition-colors"
-                        title="Zoek voertuig"
-                    >
-                        <Search size={10} />
-                    </button>
-                </div>
-                <div className="flex gap-1 items-center">
-                    <EditableField 
-                        value={lead.x_studio_voertuig_lead || ""} 
-                        onChange={(v) => onUpdate('x_studio_voertuig_lead', v)} 
-                    />
-                </div>
-                
-                <div className="label">Velgmodel</div>
-                <EditableField 
-                    value={lead.x_studio_velgmodel_lead || ""} 
-                    onChange={(v) => onUpdate('x_studio_velgmodel_lead', v)} 
-                />
-                
-                <div className="label">Inchmaat</div>
-                <EditableField 
-                    value={lead.x_studio_inchmaat_lead || ""} 
-                    onChange={(v) => onUpdate('x_studio_inchmaat_lead', v)} 
-                />
-                
-                <div className="label">Kleur</div>
-                <EditableField 
-                    value={lead.x_studio_kleur_lead || ""} 
-                    onChange={(v) => onUpdate('x_studio_kleur_lead', v)} 
-                />
-            </div>
-
-            <div className="prob-bar">
-                <div className="prob-fill" style={{ width: `${Math.min(prob, 100)}%` }}></div>
-            </div>
-        </div>
-    );
-}
-
 function VehicleSearch({ onSelect }: { onSelect: (vehicle: string) => void }) {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<any[]>([]);
@@ -740,7 +752,6 @@ function VehicleSearch({ onSelect }: { onSelect: (vehicle: string) => void }) {
                 body: JSON.stringify({ query })
             });
             const data = await res.json();
-            // Verwacht een array van resultaten in data.results of direct in data
             const items = data.results || data.vehicles || (Array.isArray(data) ? data : []);
             setResults(items);
         } catch (e) {
@@ -752,50 +763,65 @@ function VehicleSearch({ onSelect }: { onSelect: (vehicle: string) => void }) {
     };
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
-            <div className="flex gap-2 mb-3">
-                <input 
-                    className="note-textarea h-9 min-h-0 mt-0 flex-1"
-                    placeholder="Bijv: BMW M5 2025..."
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    autoFocus
-                />
+        <div className="flex flex-col h-full bg-bg-soft p-2">
+            <div className="flex gap-2 mb-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" size={14} />
+                    <input 
+                        className="w-full bg-bg-elevated border border-border-subtle rounded-md pl-9 pr-3 py-2 text-xs text-text-primary focus:border-accent focus:outline-none placeholder:text-text-secondary/50"
+                        placeholder="Zoek merk, model, jaar..."
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                </div>
                 <button 
-                    className="btn px-3" 
+                    className="btn px-4" 
                     onClick={handleSearch}
                     disabled={loading}
                 >
-                    {loading ? <Loader2 className="animate-spin" size={14} /> : <Search size={14} />}
+                    {loading ? <Loader2 className="animate-spin" size={14} /> : "Zoek"}
                 </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto min-h-[200px] -mx-1 px-1">
-                {loading && <div className="text-center py-4 text-xs text-text-secondary">Zoeken bij Wheel-Size API...</div>}
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {loading && (
+                    <div className="flex flex-col items-center justify-center h-full text-text-secondary gap-2">
+                        <Loader2 className="animate-spin" size={20} />
+                        <span className="text-xs">Connecting to Wheel-Size API...</span>
+                    </div>
+                )}
                 
                 {!loading && searched && results.length === 0 && (
-                    <div className="text-center py-4 text-xs text-text-secondary">Geen voertuigen gevonden.</div>
+                    <div className="flex flex-col items-center justify-center h-full text-text-secondary">
+                        <span className="text-xs opacity-60">Geen voertuigen gevonden.</span>
+                    </div>
                 )}
 
-                <div className="flex flex-col gap-1">
+                {!loading && !searched && results.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full text-text-secondary opacity-40">
+                        <Car size={32} strokeWidth={1} className="mb-2" />
+                        <span className="text-xs">Start met zoeken</span>
+                    </div>
+                )}
+
+                <div className="flex flex-col gap-1 pr-1">
                     {results.map((item, idx) => {
-                        // Support various API response structures
                         const name = item.name || item.title || `${item.make} ${item.model} ${item.year}`;
                         const details = item.trim || item.modification || "";
                         
                         return (
                             <button
                                 key={idx}
-                                className="text-left p-2 rounded hover:bg-bg-elevated border border-transparent hover:border-border-subtle transition-colors group"
+                                className="text-left p-3 rounded-md hover:bg-bg-elevated border border-transparent hover:border-border-subtle transition-all group flex items-start gap-3"
                                 onClick={() => onSelect(name)}
                             >
-                                <div className="flex items-center gap-2">
+                                <div className="mt-0.5 p-1.5 rounded-full bg-bg-elevated group-hover:bg-accent/10 transition-colors">
                                     <Car size={14} className="text-text-secondary group-hover:text-accent" />
-                                    <div>
-                                        <div className="text-xs font-medium text-text-primary">{name}</div>
-                                        {details && <div className="text-[10px] text-text-secondary">{details}</div>}
-                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-xs font-semibold text-text-primary group-hover:text-accent transition-colors">{name}</div>
+                                    {details && <div className="text-[11px] text-text-secondary mt-0.5">{details}</div>}
                                 </div>
                             </button>
                         );
