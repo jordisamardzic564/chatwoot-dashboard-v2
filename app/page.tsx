@@ -280,17 +280,26 @@ export default function Dashboard() {
     }
   };
 
-  const updateLeadField = async (field: string, value: any) => {
+  const updateLeadField = async (field: string | Record<string, any>, value?: any) => {
     if (!lead) return;
+    
+    // Handle both single field update and bulk update
+    let updates: Record<string, any> = {};
+    if (typeof field === 'string') {
+        updates = { [field]: value };
+    } else {
+        updates = field;
+    }
+
     // Optimistic update
     const oldLead = { ...lead };
-    setLead({ ...lead, [field]: value });
+    setLead({ ...lead, ...updates });
     
     try {
         await fetch(ENDPOINTS.UPDATE_LEAD, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lead_id: lead.id, [field]: value })
+            body: JSON.stringify({ lead_id: lead.id, ...updates })
         });
     } catch (e) {
         console.error("Update failed", e);
@@ -446,7 +455,7 @@ export default function Dashboard() {
 
 // --- SUBCOMPONENTS ---
 
-function LeadPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string, val: any) => void }) {
+function LeadPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string | Record<string, any>, val?: any) => void }) {
     const prob = typeof lead.probability === "number" ? lead.probability : 0;
     
     return (
@@ -506,7 +515,28 @@ function LeadPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string, v
     )
 }
 
-function VehiclePanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string, val: any) => void }) {
+function VehiclePanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string | Record<string, any>, val?: any) => void }) {
+    
+    const handleVehicleSelect = (vehicle: VehicleResult) => {
+        // Map API result to Odoo fields
+        const updates = {
+            // Bestaande veld
+            x_studio_voertuig_lead: vehicle.name,
+            
+            // Nieuwe Odoo velden
+            x_studio_officile_naam_voertuig: vehicle.name,
+            x_studio_automerk: vehicle.vehicle_make,
+            x_studio_model_1: vehicle.vehicle_model,
+            x_studio_generatie: vehicle.vehicle_generation,
+            
+            x_studio_oem_front: vehicle.oem_front_rim,
+            x_studio_oem_rear: vehicle.oem_rear_rim,
+            x_studio_steekmaat_1: vehicle.tech_bolt_pattern,
+            x_studio_naafgat_1: vehicle.tech_center_bore,
+        };
+        onUpdate(updates);
+    };
+
     return (
         <div className="panel flex flex-col h-full min-h-[400px]">
             <div className="panel-title-row">
@@ -517,9 +547,7 @@ function VehiclePanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string
             <div className="mb-4 flex-1">
                  <div className="text-[10px] uppercase text-text-secondary font-bold tracking-wider mb-2">Zoek Voertuig</div>
                  <div className="h-full min-h-[250px] border border-border-subtle rounded-lg bg-bg-soft overflow-hidden">
-                    <VehicleSearch 
-                        onSelect={(vehicleName) => onUpdate('x_studio_voertuig_lead', vehicleName)} 
-                    />
+                    <VehicleSearch onSelect={handleVehicleSelect} />
                  </div>
             </div>
 
@@ -749,7 +777,7 @@ function PipelineBar({ currentStageId, onStageSelect }: { currentStageId: number
     );
 }
 
-function VehicleSearch({ onSelect }: { onSelect: (vehicle: string) => void }) {
+function VehicleSearch({ onSelect }: { onSelect: (vehicle: VehicleResult) => void }) {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<VehicleResult[]>([]);
     const [loading, setLoading] = useState(false);
@@ -823,11 +851,11 @@ function VehicleSearch({ onSelect }: { onSelect: (vehicle: string) => void }) {
 
                 <div className="flex flex-col gap-2 pr-1">
                     {results.map((item, idx) => (
-                        <button
-                            key={idx}
-                            className="text-left w-full p-3 rounded-md bg-bg-elevated/50 hover:bg-bg-elevated border border-border-subtle hover:border-accent/50 transition-all group relative overflow-hidden"
-                            onClick={() => onSelect(item.name)}
-                        >
+                            <button
+                                key={idx}
+                                className="text-left w-full p-3 rounded-md bg-bg-elevated/50 hover:bg-bg-elevated border border-border-subtle hover:border-accent/50 transition-all group relative overflow-hidden"
+                                onClick={() => onSelect(item)}
+                            >
                             <div className="absolute top-0 left-0 w-[2px] h-full bg-accent/0 group-hover:bg-accent transition-colors"></div>
                             
                             <div className="flex items-start justify-between mb-2">
