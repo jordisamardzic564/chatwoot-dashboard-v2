@@ -15,7 +15,10 @@ import {
   Search,
   Link2,
   Unlink,
-  ShoppingBag
+  ShoppingBag,
+  Car,
+  X,
+  Loader2
 } from 'lucide-react';
 
 // --- CONFIGURATIE ---
@@ -32,6 +35,7 @@ const ENDPOINTS = {
   MANUAL_LINK: `${API_BASE}/chatwoot-odoo-manual-link`,
   UNLINK: `${API_BASE}/chatwoot-odoo-unlink`,
   GET_ORDERS: `${API_BASE}/chatwoot-odoo-get-orders`,
+  VEHICLE_SEARCH: `${API_BASE}/chatwoot-vehicle-search`,
 };
 
 // --- TYPES ---
@@ -602,13 +606,31 @@ function PipelineBar({ currentStageId, onStageSelect }: { currentStageId: number
 
 function DetailsPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string, val: any) => void }) {
     const prob = typeof lead.probability === "number" ? lead.probability : 0;
+    const [showVehicleSearch, setShowVehicleSearch] = useState(false);
 
     return (
-        <div className="panel">
+        <div className="panel relative">
             <div className="panel-title-row">
-                <div className="panel-title">Lead details</div>
+                <div className="panel-title">Lead & Voertuig Configuratie</div>
                 <div className="panel-dot"></div>
             </div>
+
+            {showVehicleSearch && (
+                <div className="absolute inset-0 z-10 bg-surface rounded-lg border border-border-subtle p-3 flex flex-col shadow-xl">
+                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-border-subtle/50">
+                        <span className="font-medium text-xs">Zoek Voertuig (Wheel-Size API)</span>
+                        <button onClick={() => setShowVehicleSearch(false)} className="text-text-secondary hover:text-text-primary">
+                            <X size={14} />
+                        </button>
+                    </div>
+                    <VehicleSearch 
+                        onSelect={(vehicleName) => {
+                            onUpdate('x_studio_voertuig_lead', vehicleName);
+                            setShowVehicleSearch(false);
+                        }} 
+                    />
+                </div>
+            )}
 
             <div className="data-grid">
                 <div className="label">Naam</div>
@@ -640,8 +662,6 @@ function DetailsPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string
                 <div className="label">Aangemaakt</div>
                 <div className="value">{lead.create_date?.split(' ')[0] || "-"}</div>
 
-                {/* Fase removed from here as it is now in the top bar */}
-
                 <div className="label">Probability</div>
                 <div className="value flex items-center gap-1 justify-end">
                     <input 
@@ -654,11 +674,26 @@ function DetailsPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string
                     <span>%</span>
                 </div>
 
-                <div className="label">Voertuig</div>
-                <EditableField 
-                    value={lead.x_studio_voertuig_lead || ""} 
-                    onChange={(v) => onUpdate('x_studio_voertuig_lead', v)} 
-                />
+                <div className="col-span-2 border-t border-border-subtle/30 my-2 pt-2 pb-1">
+                    <div className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-2">Offerte Configuratie</div>
+                </div>
+
+                <div className="label flex items-center gap-1">
+                    Voertuig
+                    <button 
+                        onClick={() => setShowVehicleSearch(true)}
+                        className="p-1 hover:bg-bg-elevated rounded text-accent transition-colors"
+                        title="Zoek voertuig"
+                    >
+                        <Search size={10} />
+                    </button>
+                </div>
+                <div className="flex gap-1 items-center">
+                    <EditableField 
+                        value={lead.x_studio_voertuig_lead || ""} 
+                        onChange={(v) => onUpdate('x_studio_voertuig_lead', v)} 
+                    />
+                </div>
                 
                 <div className="label">Velgmodel</div>
                 <EditableField 
@@ -681,6 +716,91 @@ function DetailsPanel({ lead, onUpdate }: { lead: Lead, onUpdate: (field: string
 
             <div className="prob-bar">
                 <div className="prob-fill" style={{ width: `${Math.min(prob, 100)}%` }}></div>
+            </div>
+        </div>
+    );
+}
+
+function VehicleSearch({ onSelect }: { onSelect: (vehicle: string) => void }) {
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [searched, setSearched] = useState(false);
+
+    const handleSearch = async () => {
+        if (!query.trim()) return;
+        setLoading(true);
+        setResults([]);
+        setSearched(false);
+        
+        try {
+            const res = await fetch(ENDPOINTS.VEHICLE_SEARCH, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query })
+            });
+            const data = await res.json();
+            // Verwacht een array van resultaten in data.results of direct in data
+            const items = data.results || data.vehicles || (Array.isArray(data) ? data : []);
+            setResults(items);
+        } catch (e) {
+            console.error("Vehicle search failed", e);
+        } finally {
+            setLoading(false);
+            setSearched(true);
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex gap-2 mb-3">
+                <input 
+                    className="note-textarea h-9 min-h-0 mt-0 flex-1"
+                    placeholder="Bijv: BMW M5 2025..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    autoFocus
+                />
+                <button 
+                    className="btn px-3" 
+                    onClick={handleSearch}
+                    disabled={loading}
+                >
+                    {loading ? <Loader2 className="animate-spin" size={14} /> : <Search size={14} />}
+                </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto min-h-[200px] -mx-1 px-1">
+                {loading && <div className="text-center py-4 text-xs text-text-secondary">Zoeken bij Wheel-Size API...</div>}
+                
+                {!loading && searched && results.length === 0 && (
+                    <div className="text-center py-4 text-xs text-text-secondary">Geen voertuigen gevonden.</div>
+                )}
+
+                <div className="flex flex-col gap-1">
+                    {results.map((item, idx) => {
+                        // Support various API response structures
+                        const name = item.name || item.title || `${item.make} ${item.model} ${item.year}`;
+                        const details = item.trim || item.modification || "";
+                        
+                        return (
+                            <button
+                                key={idx}
+                                className="text-left p-2 rounded hover:bg-bg-elevated border border-transparent hover:border-border-subtle transition-colors group"
+                                onClick={() => onSelect(name)}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Car size={14} className="text-text-secondary group-hover:text-accent" />
+                                    <div>
+                                        <div className="text-xs font-medium text-text-primary">{name}</div>
+                                        {details && <div className="text-[10px] text-text-secondary">{details}</div>}
+                                    </div>
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );
