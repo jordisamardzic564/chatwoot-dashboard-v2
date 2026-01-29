@@ -12,7 +12,9 @@ import {
   Send,
   ChevronRight,
   Search,
-  Link2
+  Link2,
+  Unlink,
+  ShoppingBag
 } from 'lucide-react';
 
 // --- CONFIGURATIE ---
@@ -27,9 +29,21 @@ const ENDPOINTS = {
   ASK_AI: `${API_BASE}/ask-ai-agent`,
   SEARCH: `${API_BASE}/chatwoot-odoo-search`,
   MANUAL_LINK: `${API_BASE}/chatwoot-odoo-manual-link`,
+  UNLINK: `${API_BASE}/chatwoot-odoo-unlink`,
+  GET_ORDERS: `${API_BASE}/chatwoot-odoo-get-orders`,
 };
 
 // --- TYPES ---
+interface Order {
+  id: number;
+  name: string;
+  date: string | null;
+  amount: number;
+  state: string; // "Offerte", "Order" etc.
+  raw_state?: string;
+  url: string;
+}
+
 interface Lead {
   id: number;
   name: string;
@@ -182,6 +196,32 @@ export default function Dashboard() {
         setStatus("Fout bij koppelen.");
     } finally {
         setIsLinking(false);
+    }
+  };
+
+  const handleUnlink = async () => {
+    if (!lead || !cwData.contactId) return;
+    if (!confirm("Weet je zeker dat je deze lead wilt ontkoppelen?")) return;
+
+    setStatus("Ontkoppelen...");
+    try {
+        const res = await fetch(ENDPOINTS.UNLINK, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                chatwoot_contact_id: cwData.contactId 
+            })
+        });
+        
+        if (res.ok) {
+            setLead(null);
+            setStatus("Lead ontkoppeld.");
+        } else {
+            setStatus("Ontkoppelen mislukt.");
+        }
+    } catch (e) {
+        console.error(e);
+        setStatus("Fout bij ontkoppelen.");
     }
   };
 
@@ -338,7 +378,7 @@ export default function Dashboard() {
       {status && <div id="status">{status}</div>}
       <div className="shell">
         <div className="surface">
-          <Header lead={lead} />
+          <Header lead={lead} onUnlink={handleUnlink} />
           <PipelineBar 
             currentStageId={Array.isArray(lead.stage_id) ? lead.stage_id[0] : null} 
             onStageSelect={(id) => updateLeadField('stage_id', id)}
@@ -353,6 +393,10 @@ export default function Dashboard() {
                 onLeadUpdate={(l) => setLead(l)}
             />
           </div>
+          
+          <div className="mt-4">
+             <OrdersPanel leadId={lead.id} />
+          </div>
         </div>
       </div>
     </div>
@@ -361,7 +405,90 @@ export default function Dashboard() {
 
 // --- SUBCOMPONENTS ---
 
-function Header({ lead }: { lead: Lead }) {
+function OrdersPanel({ leadId }: { leadId: number }) {
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        const fetchOrders = async () => {
+            setLoading(true);
+            setError("");
+            try {
+                const res = await fetch(ENDPOINTS.GET_ORDERS, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ lead_id: leadId })
+                });
+                if (!res.ok) throw new Error("Mislukt");
+                const data = await res.json();
+                setOrders(data.orders || []);
+            } catch (e) {
+                setError("Kon orders niet laden");
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (leadId) fetchOrders();
+    }, [leadId]);
+
+    if (loading) return <div className="panel p-4 text-xs text-text-secondary text-center">Orders laden...</div>;
+    if (error) return <div className="panel p-4 text-xs text-red-400 text-center">{error}</div>;
+    
+    return (
+        <div className="panel">
+            <div className="panel-title-row">
+                <div className="panel-title">Offertes & Orders</div>
+                <div className="panel-dot"></div>
+            </div>
+            
+            {orders.length === 0 ? (
+                <div className="text-xs text-text-secondary text-center py-4 opacity-60">
+                    Geen orders of offertes gevonden.
+                </div>
+            ) : (
+                <div className="flex flex-col gap-2">
+                    {orders.map((order) => (
+                        <div key={order.id} className="flex items-center justify-between p-2 rounded bg-bg-soft border border-border-subtle/50 hover:border-border-subtle transition-colors text-xs">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-1.5 rounded-full ${order.state === 'Order' ? 'bg-success/10 text-success' : 'bg-text-secondary/10 text-text-secondary'}`}>
+                                    <ShoppingBag size={14} />
+                                </div>
+                                <div>
+                                    <div className="font-medium text-text-primary">{order.name}</div>
+                                    <div className="text-[10px] text-text-secondary">{order.date}</div>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                    <div className="font-mono text-text-primary">€ {order.amount.toFixed(2)}</div>
+                                    <div className={`text-[10px] ${order.state === 'Order' ? 'text-success' : 'text-text-secondary'}`}>
+                                        {order.state}
+                                    </div>
+                                </div>
+                                
+                                <a 
+                                    href={order.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="btn btn-ghost h-7 w-7 p-0 rounded-full border-none hover:bg-bg-elevated"
+                                    title="Open in Odoo"
+                                >
+                                    <ExternalLink size={14} />
+                                </a>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function Header({ lead, onUnlink }: { lead: Lead, onUnlink: () => void }) {
     const odooUrl = `https://korbach-forged.odoo.com/web#id=${lead.id}&model=crm.lead&view_type=form`;
 
     return (
@@ -374,6 +501,13 @@ function Header({ lead }: { lead: Lead }) {
                 </div>
             </div>
             <div className="header-actions">
+                <button 
+                    className="btn btn-ghost text-text-secondary hover:text-red-400 hover:bg-red-400/10" 
+                    onClick={onUnlink} 
+                    title="Ontkoppel Lead"
+                >
+                    <Unlink size={16} />
+                </button>
                 <a className="btn" href={odooUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink />
                     Open in Odoo
