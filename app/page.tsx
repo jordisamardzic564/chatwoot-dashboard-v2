@@ -940,18 +940,31 @@ function ActionsPanel({ lead, cwData, setStatus, onLeadUpdate }: {
     const [aiQuery, setAiQuery] = useState("");
     const [aiResponse, setAiResponse] = useState("");
     const [loadingAi, setLoadingAi] = useState(false);
+    
+    // Product codes state
+    const [productCodeFront, setProductCodeFront] = useState("");
+    const [productCodeRear, setProductCodeRear] = useState("");
 
     const createQuote = async () => {
         if (!lead.x_studio_voertuig_lead) {
             if (!confirm("Er is nog geen voertuig geselecteerd. Wil je toch doorgaan met de offerte?")) return;
         }
         
+        if (!productCodeFront) {
+             setStatus("Vul minstens productcode vooras in.");
+             return;
+        }
+
         setStatus("Quote aanmaken...");
         try {
             const res = await fetch(ENDPOINTS.CREATE_QUOTE, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ lead_id: lead.id })
+                body: JSON.stringify({ 
+                    lead_id: lead.id,
+                    product_code_front: productCodeFront,
+                    product_code_rear: productCodeRear
+                })
             });
             if (res.ok) {
                 const data = await res.json();
@@ -1025,17 +1038,44 @@ function ActionsPanel({ lead, cwData, setStatus, onLeadUpdate }: {
     return (
         <div className="panel">
             <div className="panel-title-row">
-                <div className="panel-title">Acties</div>
+                <div className="panel-title">Offerte Samenstellen</div>
                 <div className="panel-dot"></div>
             </div>
 
+            <div className="flex flex-col gap-3 mb-4">
+                <div>
+                    <label className="text-[10px] text-text-secondary uppercase font-bold tracking-wider mb-1 block">Productcode Vooras</label>
+                    <input 
+                        className="w-full bg-bg-elevated border border-border-subtle rounded px-2 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 font-mono"
+                        placeholder="Bijv. PS3GBL20"
+                        value={productCodeFront}
+                        onChange={(e) => setProductCodeFront(e.target.value.toUpperCase())}
+                    />
+                </div>
+                <div>
+                    <label className="text-[10px] text-text-secondary uppercase font-bold tracking-wider mb-1 block">Productcode Achteras <span className="font-normal opacity-60">(optioneel)</span></label>
+                    <input 
+                        className="w-full bg-bg-elevated border border-border-subtle rounded px-2 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 font-mono"
+                        placeholder="Bijv. PS3GBL21 (leeg = zelfde als voor)"
+                        value={productCodeRear}
+                        onChange={(e) => setProductCodeRear(e.target.value.toUpperCase())}
+                    />
+                </div>
+            </div>
+
             <div className="actions-row">
-                <button className="btn btn-ghost text-accent border-accent-soft" onClick={runAutoFill}>
-                    <Bot size={16} /> AI Chat Analyse
-                </button>
-                
                 <button className="btn btn-ghost" onClick={createQuote}>
                     <FileText size={16} /> Create quote
+                </button>
+            </div>
+
+            <div className="panel-title-row mt-6 pt-4 border-t border-border-subtle">
+                <div className="panel-title">AI & Acties</div>
+            </div>
+
+            <div className="actions-row mt-2">
+                <button className="btn btn-ghost text-accent border-accent-soft" onClick={runAutoFill}>
+                    <Bot size={16} /> AI Chat Analyse
                 </button>
                 
                 <button className="btn btn-ghost" onClick={() => setAiMode(!aiMode)}>
@@ -1065,7 +1105,7 @@ function ActionsPanel({ lead, cwData, setStatus, onLeadUpdate }: {
                     </div>
                 </div>
             ) : (
-                <div className="relative">
+                <div className="relative mt-2">
                     <textarea 
                         className="note-textarea"
                         placeholder="Interne notitie..."
