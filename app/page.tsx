@@ -11,6 +11,7 @@ import {
   Save,
   Send,
   ChevronRight,
+  ChevronDown,
   Search,
   Link2,
   Unlink,
@@ -42,6 +43,12 @@ interface Order {
   state: string; // "Offerte", "Order" etc.
   raw_state?: string;
   url: string;
+  commitment_date?: string | null;
+  lines?: {
+    name: string;
+    qty: number;
+    price: number;
+  }[];
 }
 
 interface Lead {
@@ -409,6 +416,7 @@ function OrdersPanel({ leadId }: { leadId: number }) {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchOrders = async () => {
@@ -434,6 +442,10 @@ function OrdersPanel({ leadId }: { leadId: number }) {
         if (leadId) fetchOrders();
     }, [leadId]);
 
+    const toggleExpand = (id: number) => {
+        setExpandedOrderId(expandedOrderId === id ? null : id);
+    };
+
     if (loading) return <div className="panel p-4 text-xs text-text-secondary text-center">Orders laden...</div>;
     if (error) return <div className="panel p-4 text-xs text-red-400 text-center">{error}</div>;
     
@@ -450,38 +462,75 @@ function OrdersPanel({ leadId }: { leadId: number }) {
                 </div>
             ) : (
                 <div className="flex flex-col gap-2">
-                    {orders.map((order) => (
-                        <div key={order.id} className="flex items-center justify-between p-2 rounded bg-bg-soft border border-border-subtle/50 hover:border-border-subtle transition-colors text-xs">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-1.5 rounded-full ${order.state === 'Order' ? 'bg-success/10 text-success' : 'bg-text-secondary/10 text-text-secondary'}`}>
-                                    <ShoppingBag size={14} />
-                                </div>
-                                <div>
-                                    <div className="font-medium text-text-primary">{order.name}</div>
-                                    <div className="text-[10px] text-text-secondary">{order.date}</div>
-                                </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-3">
-                                <div className="text-right">
-                                    <div className="font-mono text-text-primary">€ {order.amount.toFixed(2)}</div>
-                                    <div className={`text-[10px] ${order.state === 'Order' ? 'text-success' : 'text-text-secondary'}`}>
-                                        {order.state}
+                    {orders.map((order) => {
+                        const isExpanded = expandedOrderId === order.id;
+                        return (
+                            <div key={order.id} className="bg-bg-soft rounded border border-border-subtle/50 overflow-hidden">
+                                <div 
+                                    className="flex items-center justify-between p-2 cursor-pointer hover:bg-bg-elevated transition-colors"
+                                    onClick={() => toggleExpand(order.id)}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-1.5 rounded-full ${order.state === 'Order' ? 'bg-success/10 text-success' : 'bg-text-secondary/10 text-text-secondary'}`}>
+                                            <ShoppingBag size={14} />
+                                        </div>
+                                        <div>
+                                            <div className="font-medium text-text-primary text-xs">{order.name}</div>
+                                            <div className="text-[10px] text-text-secondary">{order.date}</div>
+                                            {order.state === 'Order' && order.commitment_date && (
+                                                <div className="text-[10px] text-accent mt-0.5 flex items-center gap-1">
+                                                    <span className="opacity-70">Lev:</span> {order.commitment_date}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-right">
+                                            <div className="font-mono text-text-primary text-xs">€ {order.amount.toFixed(2)}</div>
+                                            <div className={`text-[10px] ${order.state === 'Order' ? 'text-success' : 'text-text-secondary'}`}>
+                                                {order.state}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex gap-1 items-center">
+                                            <a 
+                                                href={order.url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="btn btn-ghost h-7 w-7 p-0 rounded-full border-none hover:bg-bg-elevated text-text-secondary"
+                                                title="Open in Odoo"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <ExternalLink size={14} />
+                                            </a>
+                                            <div className={`text-text-secondary transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                                                <ChevronDown size={14} />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                
-                                <a 
-                                    href={order.url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="btn btn-ghost h-7 w-7 p-0 rounded-full border-none hover:bg-bg-elevated"
-                                    title="Open in Odoo"
-                                >
-                                    <ExternalLink size={14} />
-                                </a>
+
+                                {isExpanded && order.lines && order.lines.length > 0 && (
+                                    <div className="border-t border-border-subtle/30 bg-black/20 p-2">
+                                        <div className="flex flex-col gap-1.5">
+                                            {order.lines.map((line, idx) => (
+                                                <div key={idx} className="flex justify-between items-start text-[11px] py-1 border-b border-white/5 last:border-0">
+                                                    <div className="text-text-secondary flex-1 pr-2">
+                                                        <span className="text-text-primary font-mono mr-1.5">{line.qty}x</span>
+                                                        {line.name}
+                                                    </div>
+                                                    <div className="font-mono text-text-primary whitespace-nowrap opacity-60">
+                                                        € {line.price.toFixed(0)}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>
