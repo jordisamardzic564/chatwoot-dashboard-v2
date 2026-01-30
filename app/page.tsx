@@ -966,15 +966,23 @@ function ActionsPanel({ lead, cwData, setStatus, onLeadUpdate }: {
                     product_code_rear: productCodeRear
                 })
             });
+            const text = await res.text(); // Eerst als tekst lezen om te debuggen
+            console.log("Create Quote Response:", text);
+
             if (res.ok) {
-                const data = await res.json();
-                if (data.url) window.open(data.url, "_blank");
-                setStatus("Quote aangemaakt.");
+                try {
+                    const data = JSON.parse(text);
+                    if (data.url) window.open(data.url, "_blank");
+                    setStatus("Quote aangemaakt.");
+                } catch (e) {
+                    setStatus("Quote gemaakt, maar ongeldig antwoord.");
+                }
             } else {
-                setStatus("Error bij quote.");
+                setStatus(`Error bij quote: ${res.status}`);
             }
-        } catch {
-            setStatus("Error bij quote.");
+        } catch (e) {
+            console.error(e);
+            setStatus("Netwerkfout bij quote.");
         }
     };
 
