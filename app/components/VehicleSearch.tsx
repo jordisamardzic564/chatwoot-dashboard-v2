@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Search, Loader2, Car } from 'lucide-react';
+import { Search, Loader2, Car, AlertCircle } from 'lucide-react';
 import { VehicleResult } from '../types';
 import { ENDPOINTS } from '../config';
 
@@ -14,12 +14,14 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
     const [results, setResults] = useState<VehicleResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
+    const [lastQuery, setLastQuery] = useState("");
 
     const handleSearch = async () => {
         if (!query.trim()) return;
         setLoading(true);
         setResults([]);
         setSearched(false);
+        setLastQuery(query);
         
         try {
             const res = await fetch(ENDPOINTS.VEHICLE_SEARCH, {
@@ -76,8 +78,22 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                 )}
                 
                 {!loading && searched && results.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full text-text-secondary">
-                        <span className="text-xs opacity-60">Geen voertuigen gevonden.</span>
+                    <div className="flex flex-col items-center justify-center h-full text-text-secondary p-4 text-center">
+                        <AlertCircle size={24} className="mb-2 opacity-50 text-red-400" />
+                        <span className="text-sm font-medium text-text-primary mb-1">Geen resultaten gevonden</span>
+                        <div className="text-xs opacity-60 max-w-[200px]">
+                            We konden niets vinden voor <span className="font-mono text-accent">"{lastQuery}"</span>.
+                        </div>
+                        
+                        <div className="mt-4 bg-bg-elevated/50 p-3 rounded-md border border-border-subtle text-left w-full">
+                            <div className="text-[10px] uppercase font-bold text-text-secondary mb-2">Zoektips:</div>
+                            <ul className="text-xs space-y-1 opacity-80 list-disc pl-4">
+                                <li>Controleer de spelling (bijv. "Porsche" i.p.v. "Porshe")</li>
+                                <li>Probeer een minder specifiek model</li>
+                                <li>Probeer zoeken zonder bouwjaar</li>
+                                <li>Gebruik de Engelse schrijfwijze voor modellen</li>
+                            </ul>
+                        </div>
                     </div>
                 )}
 
