@@ -92,14 +92,22 @@ export default function Dashboard() {
         });
         
         if (res.ok) {
+            // Probeer JSON te parsen, maar faal niet als de response leeg is
+            try {
+                const text = await res.text();
+                if (text) JSON.parse(text);
+            } catch (e) {
+                console.warn("Geen geldige JSON response, maar request was wel succesvol (200 OK).");
+            }
+
             setLead(null);
             setStatus("Lead ontkoppeld.");
         } else {
-            setStatus("Ontkoppelen mislukt.");
+            setStatus("Ontkoppelen mislukt (" + res.status + ").");
         }
     } catch (e) {
-        console.error(e);
-        setStatus("Fout bij ontkoppelen.");
+        console.error("Unlink error:", e);
+        setStatus("Server fout (waarschijnlijk CORS in n8n).");
     }
   };
 
