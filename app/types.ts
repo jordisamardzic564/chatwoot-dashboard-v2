@@ -63,4 +63,5 @@ export interface ChatwootData {
   contactId: number | null;
   contactName?: string;
   contactPhone?: string;
+  contactEmail?: string;
 }

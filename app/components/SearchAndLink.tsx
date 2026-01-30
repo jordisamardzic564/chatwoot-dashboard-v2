@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { RefreshCw, Search, ExternalLink, Link2 } from 'lucide-react';
+import { RefreshCw, Search, ExternalLink, Link2, Plus } from 'lucide-react';
 import { ChatwootData, Lead } from '../types';
 import { ENDPOINTS } from '../config';
 
@@ -17,6 +17,37 @@ export default function SearchAndLink({ cwData, status, setStatus, loadOdoo }: S
     const [searchResults, setSearchResults] = useState<Lead[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [isLinking, setIsLinking] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
+
+    const handleCreateLead = async () => {
+        if (!cwData.contactId) return;
+        setIsCreating(true);
+        setStatus("Nieuwe lead aanmaken...");
+        try {
+            const res = await fetch(ENDPOINTS.MANUAL_SYNC, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    chatwoot_id: cwData.contactId,
+                    name: cwData.contactName || "Nieuwe Lead",
+                    phone: cwData.contactPhone,
+                    email: cwData.contactEmail
+                })
+            });
+            const data = await res.json();
+            if (data.lead) {
+                setStatus("Lead aangemaakt! Laden...");
+                await loadOdoo(cwData.contactId);
+            } else {
+                setStatus("Geen lead aangemaakt.");
+            }
+        } catch (e) {
+            console.error(e);
+            setStatus("Fout bij aanmaken.");
+        } finally {
+            setIsCreating(false);
+        }
+    };
 
     const handleSearch = async () => {
         if (!searchQuery.trim()) {
@@ -160,6 +191,18 @@ export default function SearchAndLink({ cwData, status, setStatus, loadOdoo }: S
             )}
             
             {status && <div className="mt-2 text-center text-xs text-text-secondary">{status}</div>}
+
+            <div className="mt-4 pt-4 border-t border-border-subtle/30 text-center">
+                <div className="text-[10px] text-text-secondary mb-2">Staat de lead er niet tussen?</div>
+                <button 
+                    onClick={handleCreateLead} 
+                    disabled={isCreating}
+                    className="btn btn-secondary w-full justify-center text-xs"
+                >
+                   {isCreating ? <RefreshCw className="animate-spin" size={14} /> : <Plus size={14} />}
+                   Nieuwe lead aanmaken
+                </button>
+            </div>
           </div>
         </div>
       </div>

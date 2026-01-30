@@ -41,6 +41,7 @@ export default function Dashboard() {
           contactId: parsed.data?.contact?.id || null,
           contactName: parsed.data?.contact?.name,
           contactPhone: parsed.data?.contact?.phone_number,
+          contactEmail: parsed.data?.contact?.email,
         };
         
         setCwData(data);
