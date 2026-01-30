@@ -2,11 +2,8 @@
 
 import React, { useState } from 'react';
 import { RefreshCw, Search, ExternalLink, Link2 } from 'lucide-react';
-import { ChatwootData, ENDPOINTS } from '../config'; // Wait, ENDPOINTS is in config, types in types
-import { Lead } from '../types';
-
-// Fix imports
-import { ENDPOINTS as ENDPOINTS_CONFIG } from '../config';
+import { ChatwootData, Lead } from '../types';
+import { ENDPOINTS } from '../config';
 
 interface SearchAndLinkProps {
     cwData: ChatwootData;
@@ -31,7 +28,7 @@ export default function SearchAndLink({ cwData, status, setStatus, loadOdoo }: S
         setSearchResults([]);
     
         try {
-            const res = await fetch(ENDPOINTS_CONFIG.SEARCH, {
+            const res = await fetch(ENDPOINTS.SEARCH, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ query: searchQuery })
@@ -56,7 +53,7 @@ export default function SearchAndLink({ cwData, status, setStatus, loadOdoo }: S
         setIsLinking(true);
         setStatus("Koppelen...");
         try {
-            const res = await fetch(ENDPOINTS_CONFIG.MANUAL_LINK, {
+            const res = await fetch(ENDPOINTS.MANUAL_LINK, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
