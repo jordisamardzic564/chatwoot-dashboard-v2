@@ -45,6 +45,16 @@ export interface Lead {
   x_studio_inchmaat_lead?: string;
   x_studio_kleur_lead?: string;
   x_studio_chatwoot_contact_id_1: string;
+
+  // Technische voertuig data
+  x_studio_officile_naam_voertuig?: string;
+  x_studio_automerk?: string;
+  x_studio_model_1?: string;
+  x_studio_generatie?: string;
+  x_studio_oem_front?: string;
+  x_studio_oem_rear?: string;
+  x_studio_steekmaat_1?: string;
+  x_studio_naafgat_1?: string;
 }
 
 export interface ChatwootData {
