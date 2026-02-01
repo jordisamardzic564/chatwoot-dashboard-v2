@@ -35,10 +35,10 @@ export default function VehicleConfigurator({ lead, onUpdate }: VehicleConfigura
     return (
         <div className="flex flex-col h-full bg-bg-surface p-4">
             {/* 1. SELECTION SECTION */}
-            <div className="mb-6">
+            <div className="mb-6 flex-1 flex flex-col min-h-0">
                 {!hasVehicle || isEditingVehicle ? (
-                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                         <div className="flex justify-between items-center mb-2">
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300 flex flex-col h-full">
+                         <div className="flex justify-between items-center mb-2 shrink-0">
                             <div className="text-xs uppercase text-text-secondary font-bold tracking-wider">Zoek Voertuig</div>
                             {hasVehicle && (
                                 <button 
@@ -49,7 +49,7 @@ export default function VehicleConfigurator({ lead, onUpdate }: VehicleConfigura
                                 </button>
                             )}
                          </div>
-                         <div className="h-[300px] border border-border-subtle rounded-lg bg-bg-soft overflow-hidden shadow-sm">
+                         <div className="flex-1 border border-border-subtle rounded-lg bg-bg-soft overflow-hidden shadow-sm min-h-0">
                             <VehicleSearch onSelect={handleVehicleSelect} />
                          </div>
                     </div>
@@ -116,7 +116,7 @@ export default function VehicleConfigurator({ lead, onUpdate }: VehicleConfigura
             </div>
 
             {/* 2. CONFIGURATION FIELDS */}
-            <div className="mt-auto">
+            <div className="mt-auto shrink-0">
                 <div className="text-xs uppercase text-text-secondary font-bold tracking-wider mb-3 flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-accent"></div>
                     Wiel Configuratie

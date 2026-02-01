@@ -368,7 +368,7 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
             )}
             
             {/* Results List */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="flex-1 overflow-y-auto custom-scrollbar min-h-[300px]">
                 {(loading || loadingResults) && (
                     <div className="flex flex-col items-center justify-center h-full text-text-secondary gap-2">
                         <Loader2 className="animate-spin" size={20} />
