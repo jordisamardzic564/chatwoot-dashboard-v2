@@ -27,12 +27,15 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
     // Manual Search State
     const [makes, setMakes] = useState<DropdownItem[]>([]);
     const [models, setModels] = useState<DropdownItem[]>([]);
+    const [generations, setGenerations] = useState<DropdownItem[]>([]);
     
     const [selectedMake, setSelectedMake] = useState<string>("");
     const [selectedModel, setSelectedModel] = useState<string>("");
+    const [selectedGeneration, setSelectedGeneration] = useState<string>("");
     
     const [loadingMakes, setLoadingMakes] = useState(false);
     const [loadingModels, setLoadingModels] = useState(false);
+    const [loadingGenerations, setLoadingGenerations] = useState(false);
     const [loadingResults, setLoadingResults] = useState(false);
 
     // --- Quick Search Logic ---
@@ -48,11 +51,12 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
-                    action: "search", // Backward compatibility / explicit action
+                    action: "search", // Fallback to OpenAI flow in n8n
                     query 
                 })
             });
             const data = await res.json();
+            // n8n returns { results: [...] }
             const items = data.results || (Array.isArray(data) ? data : []);
             setResults(items);
         } catch (e) {
@@ -81,8 +85,7 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                 body: JSON.stringify({ action: "get_makes" })
             });
             const data = await res.json();
-            // Expecting data to be array of { slug, name } or just strings
-            // Adapting based on likely API response structure from wheel-size via n8n
+            // Wheel-Size API returns array of { slug, name, ... } directly
             const items = Array.isArray(data) ? data : (data.makes || []);
             setMakes(items);
         } catch (e) {
@@ -94,8 +97,11 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
 
     const handleMakeChange = async (makeSlug: string) => {
         setSelectedMake(makeSlug);
+        // Reset downstream selections
         setSelectedModel("");
+        setSelectedGeneration("");
         setModels([]);
+        setGenerations([]);
         setResults([]);
         setSearched(false);
 
@@ -112,6 +118,7 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                 })
             });
             const data = await res.json();
+            // Wheel-Size API returns array of { slug, name, ... } directly
             const items = Array.isArray(data) ? data : (data.models || []);
             setModels(items);
         } catch (e) {
@@ -123,10 +130,42 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
 
     const handleModelChange = async (modelSlug: string) => {
         setSelectedModel(modelSlug);
+        // Reset downstream selections
+        setSelectedGeneration("");
+        setGenerations([]);
         setResults([]);
         setSearched(false);
 
         if (!modelSlug) return;
+
+        setLoadingGenerations(true);
+        try {
+            const res = await fetch(ENDPOINTS.VEHICLE_SEARCH, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    action: "get_generations",
+                    make: selectedMake,
+                    model: modelSlug
+                })
+            });
+            const data = await res.json();
+            // n8n Code Node returns { generations: [...] }
+            const items = data.generations || (Array.isArray(data) ? data : []);
+            setGenerations(items);
+        } catch (e) {
+            console.error("Failed to fetch generations", e);
+        } finally {
+            setLoadingGenerations(false);
+        }
+    };
+
+    const handleGenerationChange = async (generationSlug: string) => {
+        setSelectedGeneration(generationSlug);
+        setResults([]);
+        setSearched(false);
+
+        if (!generationSlug) return;
 
         setLoadingResults(true);
         try {
@@ -134,15 +173,17 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
-                    action: "get_years", // or get_years_generations
+                    action: "get_vehicles",
                     make: selectedMake,
-                    model: modelSlug
+                    model: selectedModel,
+                    generation: generationSlug
                 })
             });
             const data = await res.json();
+            // n8n Code Node returns { results: [...] }
             const items = data.results || (Array.isArray(data) ? data : []);
             setResults(items);
-            setSearched(true); // Mark as searched to show results or "no results"
+            setSearched(true);
         } catch (e) {
             console.error("Failed to fetch vehicle details", e);
         } finally {
@@ -152,7 +193,6 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
 
     const handleSelect = (item: VehicleResult) => {
         onSelect(item);
-        // Optional: Reset state or keep it? Keeping it allows re-selection.
     };
 
     return (
@@ -248,6 +288,26 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                             {loadingModels ? <Loader2 className="animate-spin" size={12} /> : <ChevronRight size={12} className="rotate-90" />}
                         </div>
                     </div>
+
+                    {/* Generation Select */}
+                    <div className="relative">
+                        <select
+                            className="w-full bg-bg-elevated border border-border-subtle rounded-md pl-3 pr-8 py-2 text-xs text-text-primary focus:border-accent focus:outline-none appearance-none disabled:opacity-50"
+                            value={selectedGeneration}
+                            onChange={(e) => handleGenerationChange(e.target.value)}
+                            disabled={!selectedModel || loadingGenerations}
+                        >
+                            <option value="">Selecteer Generatie...</option>
+                            {generations.map((gen) => (
+                                <option key={gen.slug} value={gen.slug}>
+                                    {gen.name}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
+                            {loadingGenerations ? <Loader2 className="animate-spin" size={12} /> : <ChevronRight size={12} className="rotate-90" />}
+                        </div>
+                    </div>
                 </div>
             )}
             
@@ -275,7 +335,7 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                         )}
                         {activeTab === 'manual' && (
                             <div className="text-xs opacity-60">
-                                Geen configuraties gevonden voor dit model.
+                                Geen configuraties gevonden voor deze selectie.
                             </div>
                         )}
                     </div>
@@ -288,10 +348,10 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                     </div>
                 )}
 
-                {!loading && !loadingResults && !searched && results.length === 0 && activeTab === 'manual' && selectedModel && (
+                {!loading && !loadingResults && !searched && results.length === 0 && activeTab === 'manual' && selectedModel && !selectedGeneration && (
                      <div className="flex flex-col items-center justify-center h-full text-text-secondary opacity-40">
                         <Filter size={32} strokeWidth={1} className="mb-2" />
-                        <span className="text-xs">Selecteer een model om resultaten te zien</span>
+                        <span className="text-xs">Selecteer een generatie om resultaten te zien</span>
                     </div>
                 )}
 
