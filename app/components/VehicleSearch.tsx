@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Search, Loader2, Car, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Loader2, Car, AlertCircle, Filter, ChevronRight } from 'lucide-react';
 import { VehicleResult } from '../types';
 import { ENDPOINTS } from '../config';
 
@@ -9,13 +9,33 @@ interface VehicleSearchProps {
     onSelect: (vehicle: VehicleResult) => void;
 }
 
+interface DropdownItem {
+    slug: string;
+    name: string;
+}
+
 export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
+    const [activeTab, setActiveTab] = useState<'quick' | 'manual'>('quick');
+    
+    // Quick Search State
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<VehicleResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
     const [lastQuery, setLastQuery] = useState("");
 
+    // Manual Search State
+    const [makes, setMakes] = useState<DropdownItem[]>([]);
+    const [models, setModels] = useState<DropdownItem[]>([]);
+    
+    const [selectedMake, setSelectedMake] = useState<string>("");
+    const [selectedModel, setSelectedModel] = useState<string>("");
+    
+    const [loadingMakes, setLoadingMakes] = useState(false);
+    const [loadingModels, setLoadingModels] = useState(false);
+    const [loadingResults, setLoadingResults] = useState(false);
+
+    // --- Quick Search Logic ---
     const handleSearch = async () => {
         if (!query.trim()) return;
         setLoading(true);
@@ -27,7 +47,10 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
             const res = await fetch(ENDPOINTS.VEHICLE_SEARCH, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ query })
+                body: JSON.stringify({ 
+                    action: "search", // Backward compatibility / explicit action
+                    query 
+                })
             });
             const data = await res.json();
             const items = data.results || (Array.isArray(data) ? data : []);
@@ -40,67 +63,235 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
         }
     };
 
+    // --- Manual Search Logic ---
+    
+    // Fetch Makes on mount or tab switch
+    useEffect(() => {
+        if (activeTab === 'manual' && makes.length === 0) {
+            fetchMakes();
+        }
+    }, [activeTab]);
+
+    const fetchMakes = async () => {
+        setLoadingMakes(true);
+        try {
+            const res = await fetch(ENDPOINTS.VEHICLE_SEARCH, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "get_makes" })
+            });
+            const data = await res.json();
+            // Expecting data to be array of { slug, name } or just strings
+            // Adapting based on likely API response structure from wheel-size via n8n
+            const items = Array.isArray(data) ? data : (data.makes || []);
+            setMakes(items);
+        } catch (e) {
+            console.error("Failed to fetch makes", e);
+        } finally {
+            setLoadingMakes(false);
+        }
+    };
+
+    const handleMakeChange = async (makeSlug: string) => {
+        setSelectedMake(makeSlug);
+        setSelectedModel("");
+        setModels([]);
+        setResults([]);
+        setSearched(false);
+
+        if (!makeSlug) return;
+
+        setLoadingModels(true);
+        try {
+            const res = await fetch(ENDPOINTS.VEHICLE_SEARCH, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    action: "get_models",
+                    make: makeSlug
+                })
+            });
+            const data = await res.json();
+            const items = Array.isArray(data) ? data : (data.models || []);
+            setModels(items);
+        } catch (e) {
+            console.error("Failed to fetch models", e);
+        } finally {
+            setLoadingModels(false);
+        }
+    };
+
+    const handleModelChange = async (modelSlug: string) => {
+        setSelectedModel(modelSlug);
+        setResults([]);
+        setSearched(false);
+
+        if (!modelSlug) return;
+
+        setLoadingResults(true);
+        try {
+            const res = await fetch(ENDPOINTS.VEHICLE_SEARCH, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    action: "get_years", // or get_years_generations
+                    make: selectedMake,
+                    model: modelSlug
+                })
+            });
+            const data = await res.json();
+            const items = data.results || (Array.isArray(data) ? data : []);
+            setResults(items);
+            setSearched(true); // Mark as searched to show results or "no results"
+        } catch (e) {
+            console.error("Failed to fetch vehicle details", e);
+        } finally {
+            setLoadingResults(false);
+        }
+    };
+
     const handleSelect = (item: VehicleResult) => {
         onSelect(item);
-        setResults([]);
-        setQuery("");
-        setSearched(false);
+        // Optional: Reset state or keep it? Keeping it allows re-selection.
     };
 
     return (
         <div className="flex flex-col h-full bg-bg-soft p-2">
-            <div className="flex gap-2 mb-2">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" size={14} />
-                    <input 
-                        className="w-full bg-bg-elevated border border-border-subtle rounded-md pl-9 pr-3 py-2 text-xs text-text-primary focus:border-accent focus:outline-none placeholder:text-text-secondary/50"
-                        placeholder="Zoek merk, model, jaar..."
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    />
-                </div>
-                <button 
-                    className="btn px-4" 
-                    onClick={handleSearch}
-                    disabled={loading}
+            {/* Tabs */}
+            <div className="flex border-b border-border-subtle mb-3">
+                <button
+                    className={`flex-1 pb-2 text-xs font-medium transition-colors relative ${
+                        activeTab === 'quick' ? 'text-accent' : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                    onClick={() => setActiveTab('quick')}
                 >
-                    {loading ? <Loader2 className="animate-spin" size={14} /> : "Zoek"}
+                    Snel Zoeken
+                    {activeTab === 'quick' && (
+                        <div className="absolute bottom-0 left-0 w-full h-[2px] bg-accent"></div>
+                    )}
+                </button>
+                <button
+                    className={`flex-1 pb-2 text-xs font-medium transition-colors relative ${
+                        activeTab === 'manual' ? 'text-accent' : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                    onClick={() => setActiveTab('manual')}
+                >
+                    Handmatig
+                    {activeTab === 'manual' && (
+                        <div className="absolute bottom-0 left-0 w-full h-[2px] bg-accent"></div>
+                    )}
                 </button>
             </div>
+
+            {/* Quick Search Input */}
+            {activeTab === 'quick' && (
+                <div className="flex gap-2 mb-2">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" size={14} />
+                        <input 
+                            className="w-full bg-bg-elevated border border-border-subtle rounded-md pl-9 pr-3 py-2 text-xs text-text-primary focus:border-accent focus:outline-none placeholder:text-text-secondary/50"
+                            placeholder="Zoek merk, model, jaar..."
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                        />
+                    </div>
+                    <button 
+                        className="btn px-4" 
+                        onClick={handleSearch}
+                        disabled={loading}
+                    >
+                        {loading ? <Loader2 className="animate-spin" size={14} /> : "Zoek"}
+                    </button>
+                </div>
+            )}
+
+            {/* Manual Search Dropdowns */}
+            {activeTab === 'manual' && (
+                <div className="flex flex-col gap-2 mb-3">
+                    {/* Make Select */}
+                    <div className="relative">
+                        <select
+                            className="w-full bg-bg-elevated border border-border-subtle rounded-md pl-3 pr-8 py-2 text-xs text-text-primary focus:border-accent focus:outline-none appearance-none disabled:opacity-50"
+                            value={selectedMake}
+                            onChange={(e) => handleMakeChange(e.target.value)}
+                            disabled={loadingMakes}
+                        >
+                            <option value="">Selecteer Merk...</option>
+                            {makes.map((make) => (
+                                <option key={make.slug} value={make.slug}>
+                                    {make.name}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
+                            {loadingMakes ? <Loader2 className="animate-spin" size={12} /> : <ChevronRight size={12} className="rotate-90" />}
+                        </div>
+                    </div>
+
+                    {/* Model Select */}
+                    <div className="relative">
+                        <select
+                            className="w-full bg-bg-elevated border border-border-subtle rounded-md pl-3 pr-8 py-2 text-xs text-text-primary focus:border-accent focus:outline-none appearance-none disabled:opacity-50"
+                            value={selectedModel}
+                            onChange={(e) => handleModelChange(e.target.value)}
+                            disabled={!selectedMake || loadingModels}
+                        >
+                            <option value="">Selecteer Model...</option>
+                            {models.map((model) => (
+                                <option key={model.slug} value={model.slug}>
+                                    {model.name}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
+                            {loadingModels ? <Loader2 className="animate-spin" size={12} /> : <ChevronRight size={12} className="rotate-90" />}
+                        </div>
+                    </div>
+                </div>
+            )}
             
+            {/* Results List */}
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-                {loading && (
+                {(loading || loadingResults) && (
                     <div className="flex flex-col items-center justify-center h-full text-text-secondary gap-2">
                         <Loader2 className="animate-spin" size={20} />
-                        <span className="text-xs">Connecting to Wheel-Size API...</span>
+                        <span className="text-xs">Ophalen voertuiggegevens...</span>
                     </div>
                 )}
                 
-                {!loading && searched && results.length === 0 && (
+                {!loading && !loadingResults && searched && results.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full text-text-secondary p-4 text-center">
                         <AlertCircle size={24} className="mb-2 opacity-50 text-red-400" />
                         <span className="text-sm font-medium text-text-primary mb-1">Geen resultaten gevonden</span>
-                        <div className="text-xs opacity-60 max-w-[200px]">
-                            We konden niets vinden voor <span className="font-mono text-accent">"{lastQuery}"</span>.
-                        </div>
-                        
-                        <div className="mt-4 bg-bg-elevated/50 p-3 rounded-md border border-border-subtle text-left w-full">
-                            <div className="text-[10px] uppercase font-bold text-text-secondary mb-2">Zoektips:</div>
-                            <ul className="text-xs space-y-1 opacity-80 list-disc pl-4">
-                                <li>Controleer de spelling (bijv. "Porsche" i.p.v. "Porshe")</li>
-                                <li>Probeer een minder specifiek model</li>
-                                <li>Probeer zoeken zonder bouwjaar</li>
-                                <li>Gebruik de Engelse schrijfwijze voor modellen</li>
-                            </ul>
-                        </div>
+                        {activeTab === 'quick' && (
+                            <div className="text-xs opacity-60 max-w-[200px]">
+                                We konden niets vinden voor <span className="font-mono text-accent">"{lastQuery}"</span>.
+                                <br/>
+                                <button onClick={() => setActiveTab('manual')} className="mt-2 text-accent hover:underline">
+                                    Probeer handmatig zoeken &rarr;
+                                </button>
+                            </div>
+                        )}
+                        {activeTab === 'manual' && (
+                            <div className="text-xs opacity-60">
+                                Geen configuraties gevonden voor dit model.
+                            </div>
+                        )}
                     </div>
                 )}
 
-                {!loading && !searched && results.length === 0 && (
+                {!loading && !loadingResults && !searched && results.length === 0 && activeTab === 'quick' && (
                     <div className="flex flex-col items-center justify-center h-full text-text-secondary opacity-40">
                         <Car size={32} strokeWidth={1} className="mb-2" />
                         <span className="text-xs">Start met zoeken</span>
+                    </div>
+                )}
+
+                {!loading && !loadingResults && !searched && results.length === 0 && activeTab === 'manual' && selectedModel && (
+                     <div className="flex flex-col items-center justify-center h-full text-text-secondary opacity-40">
+                        <Filter size={32} strokeWidth={1} className="mb-2" />
+                        <span className="text-xs">Selecteer een model om resultaten te zien</span>
                     </div>
                 )}
 
