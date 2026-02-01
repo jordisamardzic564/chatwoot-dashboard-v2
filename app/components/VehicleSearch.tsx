@@ -85,8 +85,8 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                 body: JSON.stringify({ action: "get_makes" })
             });
             const data = await res.json();
-            // Wheel-Size API returns array of { slug, name, ... } directly
-            const items = Array.isArray(data) ? data : (data.makes || []);
+            // Wheel-Size API returns { data: [...] } usually
+            const items = Array.isArray(data) ? data : (data.data || data.makes || []);
             setMakes(items);
         } catch (e) {
             console.error("Failed to fetch makes", e);
@@ -118,8 +118,8 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                 })
             });
             const data = await res.json();
-            // Wheel-Size API returns array of { slug, name, ... } directly
-            const items = Array.isArray(data) ? data : (data.models || []);
+            // Wheel-Size API returns { data: [...] } usually
+            const items = Array.isArray(data) ? data : (data.data || data.models || []);
             setModels(items);
         } catch (e) {
             console.error("Failed to fetch models", e);
