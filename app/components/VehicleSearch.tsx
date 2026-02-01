@@ -28,14 +28,17 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
     const [makes, setMakes] = useState<DropdownItem[]>([]);
     const [models, setModels] = useState<DropdownItem[]>([]);
     const [generations, setGenerations] = useState<DropdownItem[]>([]);
+    const [modifications, setModifications] = useState<DropdownItem[]>([]); // Stap 4
     
     const [selectedMake, setSelectedMake] = useState<string>("");
     const [selectedModel, setSelectedModel] = useState<string>("");
     const [selectedGeneration, setSelectedGeneration] = useState<string>("");
+    const [selectedModification, setSelectedModification] = useState<string>(""); // Stap 4
     
     const [loadingMakes, setLoadingMakes] = useState(false);
     const [loadingModels, setLoadingModels] = useState(false);
     const [loadingGenerations, setLoadingGenerations] = useState(false);
+    const [loadingModifications, setLoadingModifications] = useState(false);
     const [loadingResults, setLoadingResults] = useState(false);
 
     // --- Quick Search Logic ---
@@ -51,12 +54,11 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
-                    action: "search", // Fallback to OpenAI flow in n8n
+                    action: "search",
                     query 
                 })
             });
             const data = await res.json();
-            // n8n returns { results: [...] }
             const items = data.results || (Array.isArray(data) ? data : []);
             setResults(items);
         } catch (e) {
@@ -69,7 +71,6 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
 
     // --- Manual Search Logic ---
     
-    // Fetch Makes on mount or tab switch
     useEffect(() => {
         if (activeTab === 'manual' && makes.length === 0) {
             fetchMakes();
@@ -85,7 +86,6 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                 body: JSON.stringify({ action: "get_makes" })
             });
             const data = await res.json();
-            // Wheel-Size API returns { data: [...] } usually
             const items = Array.isArray(data) ? data : (data.data || data.makes || []);
             setMakes(items);
         } catch (e) {
@@ -97,11 +97,13 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
 
     const handleMakeChange = async (makeSlug: string) => {
         setSelectedMake(makeSlug);
-        // Reset downstream selections
+        // Reset alles eronder
         setSelectedModel("");
         setSelectedGeneration("");
+        setSelectedModification("");
         setModels([]);
         setGenerations([]);
+        setModifications([]);
         setResults([]);
         setSearched(false);
 
@@ -118,7 +120,6 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                 })
             });
             const data = await res.json();
-            // Wheel-Size API returns { data: [...] } usually
             const items = Array.isArray(data) ? data : (data.data || data.models || []);
             setModels(items);
         } catch (e) {
@@ -130,9 +131,11 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
 
     const handleModelChange = async (modelSlug: string) => {
         setSelectedModel(modelSlug);
-        // Reset downstream selections
+        // Reset alles eronder
         setSelectedGeneration("");
+        setSelectedModification("");
         setGenerations([]);
+        setModifications([]);
         setResults([]);
         setSearched(false);
 
@@ -150,7 +153,6 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                 })
             });
             const data = await res.json();
-            // n8n Code Node returns { generations: [...] }
             const items = data.generations || (Array.isArray(data) ? data : []);
             setGenerations(items);
         } catch (e) {
@@ -162,13 +164,47 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
 
     const handleGenerationChange = async (generationSlug: string) => {
         setSelectedGeneration(generationSlug);
+        // Reset alles eronder
+        setSelectedModification("");
+        setModifications([]);
         setResults([]);
         setSearched(false);
 
         if (!generationSlug) return;
 
+        setLoadingModifications(true);
+        try {
+            // HIER roepen we de nieuwe n8n actie aan
+            const res = await fetch(ENDPOINTS.VEHICLE_SEARCH, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    action: "get_modifications",
+                    make: selectedMake,
+                    model: selectedModel,
+                    generation: generationSlug
+                })
+            });
+            const data = await res.json();
+            const items = data.modifications || (Array.isArray(data) ? data : []);
+            setModifications(items);
+        } catch (e) {
+            console.error("Failed to fetch modifications", e);
+        } finally {
+            setLoadingModifications(false);
+        }
+    };
+
+    const handleModificationChange = async (modificationSlug: string) => {
+        setSelectedModification(modificationSlug);
+        setResults([]);
+        setSearched(false);
+
+        if (!modificationSlug) return;
+
         setLoadingResults(true);
         try {
+            // HIER sturen we de modification slug mee naar get_vehicles
             const res = await fetch(ENDPOINTS.VEHICLE_SEARCH, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -176,11 +212,11 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                     action: "get_vehicles",
                     make: selectedMake,
                     model: selectedModel,
-                    generation: generationSlug
+                    generation: selectedGeneration,
+                    modification: modificationSlug 
                 })
             });
             const data = await res.json();
-            // n8n Code Node returns { results: [...] }
             const items = data.results || (Array.isArray(data) ? data : []);
             setResults(items);
             setSearched(true);
@@ -308,6 +344,26 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                             {loadingGenerations ? <Loader2 className="animate-spin" size={12} /> : <ChevronRight size={12} className="rotate-90" />}
                         </div>
                     </div>
+
+                    {/* Modification Select (NIEUW) */}
+                    <div className="relative">
+                        <select
+                            className="w-full bg-bg-elevated border border-border-subtle rounded-md pl-3 pr-8 py-2 text-xs text-text-primary focus:border-accent focus:outline-none appearance-none disabled:opacity-50"
+                            value={selectedModification}
+                            onChange={(e) => handleModificationChange(e.target.value)}
+                            disabled={!selectedGeneration || loadingModifications}
+                        >
+                            <option value="">Selecteer Uitvoering...</option>
+                            {modifications.map((mod) => (
+                                <option key={mod.slug} value={mod.slug}>
+                                    {mod.name}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
+                            {loadingModifications ? <Loader2 className="animate-spin" size={12} /> : <ChevronRight size={12} className="rotate-90" />}
+                        </div>
+                    </div>
                 </div>
             )}
             
@@ -348,10 +404,10 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                     </div>
                 )}
 
-                {!loading && !loadingResults && !searched && results.length === 0 && activeTab === 'manual' && selectedModel && !selectedGeneration && (
+                {!loading && !loadingResults && !searched && results.length === 0 && activeTab === 'manual' && selectedGeneration && !selectedModification && (
                      <div className="flex flex-col items-center justify-center h-full text-text-secondary opacity-40">
                         <Filter size={32} strokeWidth={1} className="mb-2" />
-                        <span className="text-xs">Selecteer een generatie om resultaten te zien</span>
+                        <span className="text-xs">Selecteer een uitvoering om resultaten te zien</span>
                     </div>
                 )}
 
