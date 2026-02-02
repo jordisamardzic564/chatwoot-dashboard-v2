@@ -12,6 +12,8 @@ export interface VehicleResult {
   oem_rear_rim: string;
   oem_front_tire: string;
   oem_rear_tire: string;
+  rim_diameter?: number;
+  tags?: string;
 }
 
 export interface Order {

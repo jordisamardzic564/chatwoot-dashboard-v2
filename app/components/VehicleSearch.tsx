@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Car, AlertCircle, Filter, ChevronRight } from 'lucide-react';
+import { Search, Loader2, Car, AlertCircle, Filter, ChevronRight, Check } from 'lucide-react';
 import { VehicleResult } from '../types';
 import { ENDPOINTS } from '../config';
 
@@ -28,12 +28,12 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
     const [makes, setMakes] = useState<DropdownItem[]>([]);
     const [models, setModels] = useState<DropdownItem[]>([]);
     const [generations, setGenerations] = useState<DropdownItem[]>([]);
-    const [modifications, setModifications] = useState<DropdownItem[]>([]); // Stap 4
+    const [modifications, setModifications] = useState<DropdownItem[]>([]); 
     
     const [selectedMake, setSelectedMake] = useState<string>("");
     const [selectedModel, setSelectedModel] = useState<string>("");
     const [selectedGeneration, setSelectedGeneration] = useState<string>("");
-    const [selectedModification, setSelectedModification] = useState<string>(""); // Stap 4
+    const [selectedModification, setSelectedModification] = useState<string>(""); 
     
     const [loadingMakes, setLoadingMakes] = useState(false);
     const [loadingModels, setLoadingModels] = useState(false);
@@ -97,7 +97,6 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
 
     const handleMakeChange = async (makeSlug: string) => {
         setSelectedMake(makeSlug);
-        // Reset alles eronder
         setSelectedModel("");
         setSelectedGeneration("");
         setSelectedModification("");
@@ -131,7 +130,6 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
 
     const handleModelChange = async (modelSlug: string) => {
         setSelectedModel(modelSlug);
-        // Reset alles eronder
         setSelectedGeneration("");
         setSelectedModification("");
         setGenerations([]);
@@ -164,7 +162,6 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
 
     const handleGenerationChange = async (generationSlug: string) => {
         setSelectedGeneration(generationSlug);
-        // Reset alles eronder
         setSelectedModification("");
         setModifications([]);
         setResults([]);
@@ -174,7 +171,6 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
 
         setLoadingModifications(true);
         try {
-            // HIER roepen we de nieuwe n8n actie aan
             const res = await fetch(ENDPOINTS.VEHICLE_SEARCH, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -204,7 +200,6 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
 
         setLoadingResults(true);
         try {
-            // HIER sturen we de modification slug mee naar get_vehicles
             const res = await fetch(ENDPOINTS.VEHICLE_SEARCH, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -411,7 +406,19 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                     </div>
                 )}
 
-                <div className="flex flex-col gap-2 pr-1">
+                {/* HEADER FOR RESULTS (Only show if we have results) */}
+                {results.length > 0 && (
+                    <div className="px-1 pb-2 mb-2 border-b border-border-subtle flex items-center justify-between">
+                        <div className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">
+                            Beschikbare Maten
+                        </div>
+                        <div className="text-[10px] text-text-secondary">
+                            {results.length} opties gevonden
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex flex-col gap-2 pr-1 pb-4">
                     {results.map((item, idx) => (
                         <button
                             key={idx}
@@ -422,17 +429,41 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                             
                             <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-2">
-                                    <Car size={14} className="text-accent/70 group-hover:text-accent" />
-                                    <span className="text-sm font-semibold text-text-primary group-hover:text-white transition-colors">
-                                        {item.vehicle_make} {item.vehicle_model} <span className="text-text-secondary font-normal">{item.vehicle_generation}</span>
-                                    </span>
+                                    <div className="flex items-center justify-center w-8 h-8 rounded bg-bg-soft border border-border-subtle text-text-primary font-bold text-sm">
+                                        {item.rim_diameter}"
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-semibold text-text-primary group-hover:text-white transition-colors">
+                                            {item.oem_front_tire}
+                                        </span>
+                                        <span className="text-[10px] text-text-secondary">
+                                            {item.vehicle_make} {item.vehicle_model} {item.vehicle_generation}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="text-[10px] bg-bg-soft px-1.5 py-0.5 rounded border border-border-subtle text-text-secondary font-mono">
-                                    {item.vehicle_trim}
+                                <div className="flex flex-col items-end gap-1">
+                                    {item.tags && item.tags.includes("OEM") && (
+                                        <span className="text-[9px] bg-success/10 text-success px-1.5 py-0.5 rounded border border-success/20 font-medium">
+                                            OEM
+                                        </span>
+                                    )}
+                                    {item.tags && item.tags.includes("Winter") && (
+                                        <span className="text-[9px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 font-medium">
+                                            Winter
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] mt-2 pt-2 border-t border-border-subtle/30">
+                                <div className="flex justify-between items-center text-text-secondary">
+                                    <span>Voorvelg:</span>
+                                    <span className="text-text-primary font-mono truncate ml-2" title={item.oem_front_rim}>{item.oem_front_rim}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-text-secondary">
+                                    <span>Achtervelg:</span>
+                                    <span className="text-text-primary font-mono truncate ml-2" title={item.oem_rear_rim}>{item.oem_rear_rim}</span>
+                                </div>
                                 <div className="flex justify-between items-center text-text-secondary">
                                     <span>Steekmaat:</span>
                                     <span className="text-text-primary font-mono">{item.tech_bolt_pattern}</span>
@@ -440,14 +471,6 @@ export default function VehicleSearch({ onSelect }: VehicleSearchProps) {
                                 <div className="flex justify-between items-center text-text-secondary">
                                     <span>Naafgat:</span>
                                     <span className="text-text-primary font-mono">{item.tech_center_bore}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-text-secondary">
-                                    <span>OEM Voor:</span>
-                                    <span className="text-text-primary font-mono truncate ml-2" title={item.oem_front_rim}>{item.oem_front_rim}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-text-secondary">
-                                    <span>OEM Achter:</span>
-                                    <span className="text-text-primary font-mono truncate ml-2" title={item.oem_rear_rim}>{item.oem_rear_rim}</span>
                                 </div>
                             </div>
                         </button>
