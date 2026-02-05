@@ -17,6 +17,7 @@ import OrdersPanel from './components/OrdersPanel';
 import ActionPanel from './components/ActionPanel';
 import QuoteBuilder from './components/QuoteBuilder';
 import VehicleConfigurator from './components/VehicleConfigurator';
+import PriceList from './components/PriceList';
 import WorkspaceTabs from './components/WorkspaceTabs';
 import SearchAndLink from './components/SearchAndLink';
 
@@ -164,6 +165,11 @@ export default function Dashboard() {
           id: 'actions',
           label: 'Acties & AI',
           component: <ActionPanel lead={lead} cwData={cwData} setStatus={setStatus} onLeadUpdate={(l) => setLead(l)} />
+      },
+      {
+          id: 'pricelist',
+          label: 'Prijslijst',
+          component: <PriceList />
       }
   ];
 
