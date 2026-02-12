@@ -41,6 +41,10 @@ export interface Lead {
   probability: number;
   create_date: string;
   x_studio_source: string;
+  x_studio_medium?: string;
+  x_studio_campaign?: string;
+  x_studio_content?: string;
+  x_studio_referrer?: string;
   x_studio_naam?: string;
   x_studio_voertuig_lead?: string;
   x_studio_velgmodel_lead?: string;

@@ -45,6 +45,30 @@ export default function LeadPanel({ lead, onUpdate }: LeadPanelProps) {
                     value={lead.x_studio_source || ""} 
                     onChange={(v) => onUpdate('x_studio_source', v)} 
                 />
+
+                <div className="label">Medium</div>
+                <EditableField 
+                    value={lead.x_studio_medium || ""} 
+                    onChange={(v) => onUpdate('x_studio_medium', v)} 
+                />
+
+                <div className="label">Campaign</div>
+                <EditableField 
+                    value={lead.x_studio_campaign || ""} 
+                    onChange={(v) => onUpdate('x_studio_campaign', v)} 
+                />
+
+                <div className="label">Content</div>
+                <EditableField 
+                    value={lead.x_studio_content || ""} 
+                    onChange={(v) => onUpdate('x_studio_content', v)} 
+                />
+
+                <div className="label">Referrer</div>
+                <EditableField 
+                    value={lead.x_studio_referrer || ""} 
+                    onChange={(v) => onUpdate('x_studio_referrer', v)} 
+                />
                 
                 <div className="label">Aangemaakt</div>
                 <div className="value">{lead.create_date?.split(' ')[0] || "-"}</div>
