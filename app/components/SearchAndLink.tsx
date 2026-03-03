@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import { RefreshCw, Search, ExternalLink, Link2, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { RefreshCw, Search, ExternalLink, Link2, Plus, X, Save } from 'lucide-react';
 import { ChatwootData, Lead } from '../types';
 import { ENDPOINTS } from '../config';
 
@@ -18,20 +18,42 @@ export default function SearchAndLink({ cwData, status, setStatus, loadOdoo }: S
     const [isSearching, setIsSearching] = useState(false);
     const [isLinking, setIsLinking] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
+    
+    // State voor het aanmaak formulier
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [newLeadData, setNewLeadData] = useState({
+        name: "",
+        phone: "",
+        email: ""
+    });
+
+    // Vul formulier met Chatwoot data zodra die beschikbaar is
+    useEffect(() => {
+        setNewLeadData({
+            name: cwData.contactName || "",
+            phone: cwData.contactPhone || "",
+            email: cwData.contactEmail || ""
+        });
+    }, [cwData]);
 
     const handleCreateLead = async () => {
-        if (!cwData.contactId) return;
+        if (!cwData.contactId) {
+            setStatus("Geen Chatwoot Contact ID gevonden.");
+            return;
+        }
+        
         setIsCreating(true);
         setStatus("Nieuwe lead aanmaken...");
+        
         try {
             const res = await fetch(ENDPOINTS.MANUAL_SYNC, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     chatwoot_id: cwData.contactId,
-                    name: cwData.contactName || "Nieuwe Lead",
-                    phone: cwData.contactPhone,
-                    email: cwData.contactEmail
+                    name: newLeadData.name || "Nieuwe Lead", // Gebruik ingevulde data
+                    phone: newLeadData.phone,
+                    email: newLeadData.email
                 })
             });
             const data = await res.json();
@@ -39,13 +61,14 @@ export default function SearchAndLink({ cwData, status, setStatus, loadOdoo }: S
                 setStatus("Lead aangemaakt! Laden...");
                 await loadOdoo(cwData.contactId);
             } else {
-                setStatus("Geen lead aangemaakt.");
+                setStatus("Geen lead aangemaakt (fout in n8n?).");
             }
         } catch (e) {
             console.error(e);
             setStatus("Fout bij aanmaken.");
         } finally {
             setIsCreating(false);
+            setShowCreateForm(false);
         }
     };
 
@@ -192,16 +215,70 @@ export default function SearchAndLink({ cwData, status, setStatus, loadOdoo }: S
             
             {status && <div className="mt-2 text-center text-xs text-text-secondary">{status}</div>}
 
-            <div className="mt-4 pt-4 border-t border-border-subtle/30 text-center">
-                <div className="text-[10px] text-text-secondary mb-2">Staat de lead er niet tussen?</div>
-                <button 
-                    onClick={handleCreateLead} 
-                    disabled={isCreating}
-                    className="btn btn-secondary w-full justify-center text-xs"
-                >
-                   {isCreating ? <RefreshCw className="animate-spin" size={14} /> : <Plus size={14} />}
-                   Nieuwe lead aanmaken
-                </button>
+            <div className="mt-4 pt-4 border-t border-border-subtle/30">
+                {!showCreateForm ? (
+                    <div className="text-center">
+                        <div className="text-[10px] text-text-secondary mb-2">Staat de lead er niet tussen?</div>
+                        <button 
+                            onClick={() => setShowCreateForm(true)} 
+                            className="btn btn-secondary w-full justify-center text-xs"
+                        >
+                           <Plus size={14} />
+                           Nieuwe lead aanmaken
+                        </button>
+                    </div>
+                ) : (
+                    <div className="bg-bg-soft p-3 rounded border border-border-subtle">
+                        <div className="flex justify-between items-center mb-3">
+                            <span className="text-xs font-semibold text-text-primary">Nieuwe Lead Gegevens</span>
+                            <button onClick={() => setShowCreateForm(false)} className="text-text-secondary hover:text-text-primary">
+                                <X size={14} />
+                            </button>
+                        </div>
+                        
+                        <div className="flex flex-col gap-2 mb-3">
+                            <div>
+                                <label className="text-[10px] text-text-secondary uppercase block mb-1">Naam</label>
+                                <input 
+                                    type="text" 
+                                    className="input-edit w-full bg-bg-base border border-border-subtle rounded px-2 py-1"
+                                    value={newLeadData.name}
+                                    onChange={(e) => setNewLeadData({...newLeadData, name: e.target.value})}
+                                    placeholder="Naam van klant"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-text-secondary uppercase block mb-1">Telefoon</label>
+                                <input 
+                                    type="text" 
+                                    className="input-edit w-full bg-bg-base border border-border-subtle rounded px-2 py-1"
+                                    value={newLeadData.phone}
+                                    onChange={(e) => setNewLeadData({...newLeadData, phone: e.target.value})}
+                                    placeholder="+316..."
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-text-secondary uppercase block mb-1">Email</label>
+                                <input 
+                                    type="text" 
+                                    className="input-edit w-full bg-bg-base border border-border-subtle rounded px-2 py-1"
+                                    value={newLeadData.email}
+                                    onChange={(e) => setNewLeadData({...newLeadData, email: e.target.value})}
+                                    placeholder="email@voorbeeld.nl"
+                                />
+                            </div>
+                        </div>
+
+                        <button 
+                            onClick={handleCreateLead} 
+                            disabled={isCreating}
+                            className="btn btn-primary w-full justify-center text-xs"
+                        >
+                           {isCreating ? <RefreshCw className="animate-spin" size={14} /> : <Save size={14} />}
+                           Aanmaken & Koppelen
+                        </button>
+                    </div>
+                )}
             </div>
           </div>
         </div>
